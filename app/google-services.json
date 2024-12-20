@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "531061573814",
+    "project_id": "act-project-a",
+    "storage_bucket": "act-project-a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:531061573814:android:8751415e6404d1e59c7e17",
+        "android_client_info": {
+          "package_name": "com.example.act22"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "531061573814-a08qhkg8dooggk9i57f9fimpe3kbb4lp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADsTHAY-F2nTKRccE8TCUHsFir_0j3-EU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "531061573814-a08qhkg8dooggk9i57f9fimpe3kbb4lp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
