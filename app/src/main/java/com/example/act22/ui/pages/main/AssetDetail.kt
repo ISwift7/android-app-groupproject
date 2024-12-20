@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.act22.data.model.Crypto
+import com.example.act22.data.model.TechStock
 import com.example.act22.viewmodel.AssetPriceViewModel
 import com.example.act22.viewmodel.PortfolioViewModel
 import kotlinx.coroutines.cancel
@@ -359,8 +361,22 @@ fun AssetBasicDetails(
                 AssetImage(asset)
                 AssetBasicDetailsText("Name : ${asset.name}")
                 AssetBasicDetailsText("Price : $${String.format("%.2f", asset.price)}")
-                AssetBasicDetailsText("Low : ${String.format("%.2f", asset.price * 0.5)}")
-                AssetBasicDetailsText("High : ${String.format("%.2f", asset.price * 1.7)}")
+                when (asset) {
+                    is TechStock -> {
+                        AssetBasicDetailsText("Low : $${String.format("%.2f", asset.low)}")
+                        AssetBasicDetailsText("High : $${String.format("%.2f", asset.high)}")
+                        AssetBasicDetailsText("Open : $${String.format("%.2f", asset.open)}")
+                        AssetBasicDetailsText("Previous Close : $${String.format("%.2f", asset.previous_close)}")
+                    }
+                    is Crypto -> {
+                        AssetBasicDetailsText("Low : $${String.format("%.2f", asset.low)}")
+                        AssetBasicDetailsText("High : $${String.format("%.2f", asset.high)}")
+                        AssetBasicDetailsText("Previous Close : $${String.format("%.2f", asset.previous_close)}")
+                    }
+
+                    is Crypto -> TODO()
+                    is TechStock -> TODO()
+                }
             }
         }
     }
