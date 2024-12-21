@@ -33,34 +33,34 @@ class AssetPriceViewModel(
     private val _chartUiState = MutableStateFlow<ChartUiState>(ChartUiState.Loading)
     val chartUiState: StateFlow<ChartUiState> = _chartUiState
 
-    fun fetchAssetInformation(id: String){
+    fun fetchAssetInformation(id: String) {
         viewModelScope.launch {
             fetchAsset(id)
             fetchYearlyHistoryPricePoints(id)
+            
+            // Start periodic price updates
+            while (true) {
+                delay(30000) // Update every 30 seconds
+                fetchAsset(id)
+            }
         }
     }
 
-    private  suspend fun fetchAsset(id: String) {
+    private suspend fun fetchAsset(id: String) {
         try {
             _assetUiState.value = AssetUiState.Loading
             val asset = repository.findAsset(id)
-            _assetUiState.value = AssetUiState.Success(asset)
+            if (asset.price <= 0) {
+                _assetUiState.value = AssetUiState.Error("Could not get current price")
+            } else {
+                _assetUiState.value = AssetUiState.Success(asset)
+            }
         } catch (e: Exception) {
             _assetUiState.value = AssetUiState.Error("Failed to load asset: ${e.message}")
         }
     }
 
     suspend fun fetchYearlyHistoryPricePoints(id: String) {
-        try {
-            _chartUiState.value = ChartUiState.Loading
-            val pricePoints = repository.getYearlyHistoryPricePoints(id)
-            _chartUiState.value = ChartUiState.Success(pricePoints)
-        } catch (e: Exception) {
-            _chartUiState.value = ChartUiState.Error("Failed to load chart data: ${e.message}")
-        }
-    }
-
-    suspend fun fetchDailyHistoryPricePoints(id: String) {
         try {
             _chartUiState.value = ChartUiState.Loading
             val pricePoints = repository.getYearlyHistoryPricePoints(id)

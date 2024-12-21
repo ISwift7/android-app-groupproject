@@ -32,6 +32,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Divider
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun UserProfile(
@@ -47,6 +48,11 @@ fun UserProfile(
 fun UserInfo(
     navController: NavController
 ){
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val userId = currentUser?.uid ?: "Not logged in"
+    val userEmail = currentUser?.email ?: "No email"
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -55,8 +61,8 @@ fun UserInfo(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        UserInfoField("userID: ", "230300")
-        UserInfoField("name: ", "Milana Zhuhaievych")
+        UserInfoField("userID: ", userId)
+        UserInfoField("email: ", userEmail)
     }
 }
 
@@ -169,13 +175,6 @@ fun WalletTab(
         }
     }
 
-    // Initial balance fetch
-    LaunchedEffect(Unit) {
-        walletViewModel.refreshBalance { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -191,12 +190,35 @@ fun WalletTab(
             )
         }
 
-        Text(
-            text = "Current Balance: $${String.format("%.2f", balance)}",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color(0xFF4A148C),
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Current Balance: $${String.format("%.2f", balance)}",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color(0xFF4A148C),
+                modifier = Modifier.weight(1f)
+            )
+            
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        walletViewModel.refreshBalance { error ->
+                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,  // You might want to use a refresh icon instead
+                    contentDescription = "Refresh Balance",
+                    tint = Color(0xFF4A148C)
+                )
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 
@@ -21,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -39,9 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.act22.activity.Screen
 import com.example.act22.viewmodel.PortfolioViewModel
+import com.example.act22.viewmodel.TradingViewModel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -50,11 +55,19 @@ fun UserPortfolio(
     portfolioViewModel: PortfolioViewModel = PortfolioViewModel()
 ) {
     MainScaffold(navController) {
+        val portfolio by portfolioViewModel.portfolioState.collectAsState()
+        val walletBalance by portfolioViewModel.walletBalance.collectAsState()
+        
+        // Update portfolio data when the component is first displayed
+        LaunchedEffect(Unit) {
+            portfolioViewModel.refreshPortfolio()
+        }
+        
         if (portfolioViewModel.isPortfolioEmpty()) {
             EmptyPage(
                 text = "Your portfolio is empty",
-                buttonText = "Build portfolio now",
-                onClick = { navController.navigate(Screen.PortfolioBuilder.route) }
+                buttonText = "Start Trading",
+                onClick = { navController.navigate(Screen.MainPage.route) }
             )
         } else {
             val scrollState = rememberScrollState()
@@ -63,16 +76,36 @@ fun UserPortfolio(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
             ) {
+                // Display wallet balance
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Wallet Balance",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "$${String.format("%.2f", walletBalance)}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
                 PortfolioOverview(
                     navController,
                     portfolioViewModel
                 )
-//                PortfolioAssets(
-//                    navController = navController,
-//                    portfolioViewModel = portfolioViewModel
-//                )
                 PortfolioTabs(navController, portfolioViewModel)
-
             }
         }
     }
@@ -119,18 +152,19 @@ fun PortfolioOverview(
     
     // Update prices when the component is first displayed
     LaunchedEffect(Unit) {
-        portfolioViewModel.updateAssetPrices()
+        portfolioViewModel.refreshPortfolio()
     }
     
     // Set up periodic updates (every 30 seconds)
     LaunchedEffect(Unit) {
         while (true) {
             delay(30000) // 30 seconds
-            portfolioViewModel.updateAssetPrices()
+            portfolioViewModel.refreshPortfolio()
         }
     }
 
-    val totalPortfolioValue = portfolio.techStocks.sumOf { it.price } + portfolio.cryptos.sumOf { it.price }
+    val totalPortfolioValue = portfolio.techStocks.sumOf { it.price * it.quantity } + 
+                             portfolio.cryptos.sumOf { it.price * it.quantity }
     val techStockCount = portfolio.techStocks.size
     val cryptoCount = portfolio.cryptos.size
 
@@ -168,13 +202,13 @@ fun PortfolioOverview(
         ){
             Icon(
                 imageVector = Icons.Outlined.Edit,
-                contentDescription = "Edit Portfolio",
+                contentDescription = "Start Trading",
                 modifier = Modifier
                     .size(35.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.secondary)
                     .padding(5.dp)
-                    .clickable { navController.navigate(Screen.PortfolioBuilder.route) },
+                    .clickable { navController.navigate(Screen.MainPage.route) },
                 tint = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -187,17 +221,31 @@ fun PortfolioAssets(
     navController: NavController,
     portfolioViewModel: PortfolioViewModel
 ) {
-    val portfolio = portfolioViewModel.getPortfolio()
+    val portfolio by portfolioViewModel.portfolioState.collectAsState()
+    
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+        Text(
+            text = "Stocks",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
         portfolio.techStocks.forEach { stock ->
             PortfolioAssetCard(navController, stock)
         }
-        portfolio.cryptos.forEach { crypto ->
-            PortfolioAssetCard(navController, crypto)
+        
+        if (portfolio.cryptos.isNotEmpty()) {
+            Text(
+                text = "Cryptocurrencies",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+            )
+            portfolio.cryptos.forEach { crypto ->
+                PortfolioAssetCard(navController, crypto)
+            }
         }
     }
 }
@@ -207,6 +255,9 @@ fun PortfolioAssetCard(
     navController: NavController,
     asset: Asset
 ){
+    var showTradingDialog by remember { mutableStateOf(false) }
+    val tradingViewModel: TradingViewModel = viewModel()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,7 +270,60 @@ fun PortfolioAssetCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         StockChartPlaceholder(100.dp)
-        AssetCardContent(asset)
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = asset.name,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Quantity: ${String.format("%.4f", asset.quantity)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Price: $${String.format("%.2f", asset.price)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Total Value: $${String.format("%.2f", asset.price * asset.quantity)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
+            // Trading buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = { showTradingDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Buy More")
+                }
+                Button(
+                    onClick = { showTradingDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Sell")
+                }
+            }
+        }
+    }
+
+    if (showTradingDialog) {
+        TradingDialog(
+            asset = asset,
+            isInPortfolio = true,
+            onDismiss = { showTradingDialog = false },
+            tradingViewModel = tradingViewModel
+        )
     }
 }
 

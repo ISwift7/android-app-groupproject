@@ -34,6 +34,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.round
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.act22.ui.components.TradingDialog
+import com.example.act22.viewmodel.TradingViewModel
 
 @Composable
 fun AssetDetails(
@@ -46,8 +49,9 @@ fun AssetDetails(
     val assetUiState by assetPriceViewModel.assetUiState.collectAsState()
     val chartUiState by assetPriceViewModel.chartUiState.collectAsState()
 
-    LaunchedEffect(assetId) {
+    DisposableEffect(assetId) {
         assetPriceViewModel.fetchAssetInformation(assetId)
+        onDispose { }
     }
 
     MainScaffold(navController) {
@@ -60,7 +64,8 @@ fun AssetDetails(
                     portfolioViewModel,
                     aiViewModel,
                     asset,
-                    chartUiState
+                    chartUiState,
+                    navController
                 )
             }
         }
@@ -73,7 +78,8 @@ fun AssetDetailsColumn(
     portfolioViewModel: PortfolioViewModel,
     aiViewModel: AIViewModel,
     asset: Asset,
-    chartUiState: AssetPriceViewModel.ChartUiState
+    chartUiState: AssetPriceViewModel.ChartUiState,
+    navController: NavController
 ) {
     Box(
         modifier = Modifier.fillMaxSize()
@@ -92,7 +98,7 @@ fun AssetDetailsColumn(
         }
 
         AssetHeader(asset, Modifier.align(Alignment.TopCenter))
-        AssetActions(portfolioViewModel, asset, Modifier.align(Alignment.BottomCenter))
+        AssetActions(portfolioViewModel, asset, Modifier.align(Alignment.BottomCenter), navController)
     }
 }
 
@@ -135,9 +141,12 @@ fun AssetHeader(
 fun AssetActions(
     portfolioViewModel: PortfolioViewModel,
     asset: Asset,
-    modifier: Modifier
-){
-    var isInPortfolio = false;
+    modifier: Modifier,
+    navController: NavController
+) {
+    var showTradingDialog by remember { mutableStateOf(false) }
+    val tradingViewModel: TradingViewModel = viewModel()
+    val isInPortfolio = portfolioViewModel.isAssetInPortfolio(asset)
 
     Row(
         modifier = modifier
@@ -146,31 +155,40 @@ fun AssetActions(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(top = 5.dp)
             .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = if (isInPortfolio) Arrangement.SpaceBetween else Arrangement.Center,
         verticalAlignment = Alignment.Top
-    ){
-        if (isInPortfolio) {
-            SmallButton(
-                title = "Buy",
-                onClick = {},
-                modifier = Modifier.weight(0.5f),
-                color = Color(0xFF058A00)
-            )
-
-            SmallButton(
-                title = "Sell",
-                onClick = {},
-                modifier = Modifier.weight(0.5f),
-                color = Color(0xFFD30000)
-            )
-        } else {
-            SmallButton(
-                title = "Add to portfolio",
-                onClick = {},
-                modifier = Modifier
-                    .weight(1f)
-            )
+    ) {
+        Button(
+            onClick = { showTradingDialog = true },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(if (isInPortfolio) "Buy More" else "Buy")
         }
+        if (isInPortfolio) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { navController.navigate("portfolio") },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Go to Portfolio to Sell")
+            }
+        }
+    }
+
+    if (showTradingDialog) {
+        TradingDialog(
+            asset = asset,
+            isInPortfolio = false, // Always show buy dialog
+            onDismiss = { showTradingDialog = false },
+            tradingViewModel = tradingViewModel,
+            portfolioViewModel = portfolioViewModel
+        )
     }
 }
 

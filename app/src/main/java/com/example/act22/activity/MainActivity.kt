@@ -1,7 +1,7 @@
 package com.example.act22.activity
 
-import com.example.act22.viewmodel.AIViewModel
 import AssetManagerViewModel
+import com.example.act22.viewmodel.AIViewModel
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity

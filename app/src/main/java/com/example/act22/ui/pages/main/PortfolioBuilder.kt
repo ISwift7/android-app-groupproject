@@ -46,11 +46,12 @@ fun PortfolioBuildingPage(
         InfoBox()
         PortfolioBuilder(
             modifier = Modifier.weight(1f),
-            portfolioViewModel = portfolioViewModel
+            portfolioViewModel = portfolioViewModel,
+            navController = navController
         )
         BigButton(
-            prompt = "Save",
-            onClick = {navController.navigate(Screen.Portfolio.route)}
+            prompt = "Go to Trading",
+            onClick = { navController.navigate(Screen.MainPage.route) }
         )
     }
 }
@@ -100,7 +101,8 @@ fun InfoBox() {
 @Composable
 fun PortfolioBuilder(
     modifier: Modifier,
-    portfolioViewModel: PortfolioViewModel
+    portfolioViewModel: PortfolioViewModel,
+    navController: NavController
 ) {
     val listState = rememberLazyListState()
     val assetRepository = remember { AssetRepositoryFirebaseImpl() }
@@ -124,7 +126,8 @@ fun PortfolioBuilder(
         ) { stock ->
             ToggleAssetCard(
                 asset = stock,
-                portfolioViewModel = portfolioViewModel
+                portfolioViewModel = portfolioViewModel,
+                navController = navController
             )
         }
 
@@ -135,7 +138,8 @@ fun PortfolioBuilder(
         ) { crypto ->
             ToggleAssetCard(
                 asset = crypto,
-                portfolioViewModel = portfolioViewModel
+                portfolioViewModel = portfolioViewModel,
+                navController = navController
             )
         }
     }
@@ -167,22 +171,17 @@ fun StickyStockHeader(title: String){
 @Composable
 fun ToggleAssetCard(
     asset: Asset,
-    portfolioViewModel: PortfolioViewModel
+    portfolioViewModel: PortfolioViewModel,
+    navController: NavController
 ) {
     val isClicked = remember { mutableStateOf(portfolioViewModel.isAssetInPortfolio(asset)) }
-    val context = LocalContext.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 5.dp)
             .clickable {
-                portfolioViewModel.toggleAsset(asset) { errorMessage ->
-                    if (errorMessage != null) {
-                        Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
-                    }
-                    isClicked.value = portfolioViewModel.isAssetInPortfolio(asset)
-                }
+                navController.navigate(Screen.MainPage.route)
             },
         colors = CardDefaults.cardColors(
             containerColor = if (isClicked.value) 
@@ -220,3 +219,4 @@ fun ToggleAssetCard(
         }
     }
 }
+ 
