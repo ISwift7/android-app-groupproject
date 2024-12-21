@@ -94,5 +94,26 @@ dependencies {
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation("com.stripe:stripe-android:20.35.0") {
+        exclude(group = "com.google.android.material", module = "material")
+    }
+    implementation("com.stripe:financial-connections:20.35.0")
+    implementation("com.stripe:payments-ui-core:20.35.0")
+
+    implementation("androidx.compose.ui:ui-tooling:1.5.4")
+    implementation("androidx.compose.material:material:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.compose.foundation:foundation:1.5.4")
+    implementation("androidx.compose.ui:ui-util:1.7.6")
+    implementation("androidx.compose.runtime:runtime:1.5.4")
+    implementation("androidx.compose.ui:ui-text:1.5.4")
+    implementation("androidx.compose.ui:ui-graphics:1.5.4")
+    implementation("androidx.compose.animation:animation:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+
 
 }

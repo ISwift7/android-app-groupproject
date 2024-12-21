@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -52,7 +53,37 @@ fun AssetCardContent(asset: Asset) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         AssetImage(asset)
-        AssetDetails(asset)
+        Column {
+            Text(
+                text = asset.name,
+                style = MaterialTheme.typography.bodyLarge.copy(textDecoration = TextDecoration.None),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Price: $${String.format("%.2f", asset.price)}",
+                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (asset is TechStock) {
+                Text(
+                    text = "Industry: ${asset.sector}",
+                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Country: ${asset.country}",
+                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            if (asset is Crypto) {
+                Text(
+                    text = "Blockchain: ${asset.blockchain}",
+                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
     }
 }
 

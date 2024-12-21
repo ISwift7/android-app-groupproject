@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.act22.data.model.Crypto
@@ -388,7 +389,7 @@ fun AssetBasicDetailsText(
 ) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
         modifier = Modifier.padding(5.dp),
         color = MaterialTheme.colorScheme.onSurface
     )
@@ -423,9 +424,9 @@ fun AssetAnalytics(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Curve AI analyzed that...",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onBackground,
+                text = "Curve AI predicts that...",
+                style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
             when (analysisState) {
@@ -447,7 +448,7 @@ fun AssetAnalytics(
 @Composable
 fun TypingTextAnimation(
     fullText: String,
-    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    style: TextStyle = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
     color: Color = MaterialTheme.colorScheme.onSurface,
     textAlign: TextAlign = TextAlign.Justify,
     modifier: Modifier = Modifier,
@@ -474,7 +475,7 @@ fun TypingTextAnimation(
 
     Text(
         text = displayedText,
-        style = style,
+        style = style.copy(textDecoration = TextDecoration.None),
         color = color,
         textAlign = textAlign,
         modifier = modifier
@@ -511,35 +512,16 @@ fun AssetPredictions(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Curve AI predicts that...",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 10.dp)
+                text = "Receive notification\nwhen price reaches a set price point",
+                style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
             )
-            when (predictionState) {
-                is AIViewModel.UiState.Error -> ErrorMessage((predictionState as AIViewModel.UiState.Error).message)
-                is AIViewModel.UiState.Success -> {
-                    val aiPredictionText = (predictionState as AIViewModel.UiState.Success).data[0]
-                    val aiPredictionExplanation = (predictionState as AIViewModel.UiState.Success).data[1]
-
-                    var isComplete by remember { mutableStateOf(false) }
-                    TypingTextAnimation(
-                        fullText = aiPredictionText,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        onComplete = {isComplete = true}
-                    )
-
-                    if(isComplete){
-                        TypingTextAnimation(
-                            fullText = aiPredictionExplanation,
-                            modifier = Modifier.padding(top = 10.dp)
-                        )
-                    }
-                }
-                else -> LoadingSpinner()
-            }
+            Text(
+                text = "You can set up to 3 price alerts",
+                style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.None),
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -561,13 +543,13 @@ fun AssetPriceAlerts(
     ) {
         Text(
             text = "Receive notification\nwhen price reaches a set price point",
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
         Text(
             text = "You can set up to 3 price alerts",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.None),
             color = MaterialTheme.colorScheme.onSurface
         )
     }

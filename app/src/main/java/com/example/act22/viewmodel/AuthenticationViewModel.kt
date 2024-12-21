@@ -3,13 +3,17 @@ package com.example.act22.viewmodel
 import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.act22.service.BackendService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import kotlinx.coroutines.launch
 
 class AuthenticationViewModel : ViewModel() {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val backendService = BackendService()
 
     private fun validateCredentials(email: String, password: String): String? {
         if (email.isEmpty() || password.isEmpty()) {
@@ -44,13 +48,33 @@ class AuthenticationViewModel : ViewModel() {
                     auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { signInTask ->
                         if (signInTask.isSuccessful) {
                             val user = auth.currentUser
-                            user?.let {
-                                it.sendEmailVerification()
-                                    .addOnCompleteListener { verificationTask ->
-                                        if (verificationTask.isSuccessful) {
-                                            onResult(true, "Registration successful! Please check your email to verify your account.")
+                            user?.let { firebaseUser ->
+                                firebaseUser.getIdToken(true)
+                                    .addOnCompleteListener { tokenTask ->
+                                        if (tokenTask.isSuccessful) {
+                                            val idToken = tokenTask.result.token
+                                            viewModelScope.launch {
+                                                try {
+                                                    backendService.createUser(email, idToken!!)
+                                                        .onSuccess {
+                                                            firebaseUser.sendEmailVerification()
+                                                                .addOnCompleteListener { verificationTask ->
+                                                                    if (verificationTask.isSuccessful) {
+                                                                        onResult(true, "Registration successful! Please check your email to verify your account.")
+                                                                    } else {
+                                                                        onResult(false, "Failed to send verification email. Please try again.")
+                                                                    }
+                                                                }
+                                                        }
+                                                        .onFailure { e ->
+                                                            onResult(false, "Failed to create user in backend: ${e.message}")
+                                                        }
+                                                } catch (e: Exception) {
+                                                    onResult(false, "Failed to create user: ${e.message}")
+                                                }
+                                            }
                                         } else {
-                                            onResult(false, "Failed to send verification email. Please try again.")
+                                            onResult(false, "Failed to get authentication token")
                                         }
                                     }
                             } ?: onResult(false, "User registration failed. Please try again.")
@@ -71,7 +95,6 @@ class AuthenticationViewModel : ViewModel() {
             onResult(false, it)
             return
         }
-        //TODO check whether email is confirmed
 
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->

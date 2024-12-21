@@ -1,6 +1,5 @@
 package com.example.act22.activity
 
-
 import com.example.act22.viewmodel.AIViewModel
 import AssetManagerViewModel
 import android.content.pm.PackageManager
@@ -10,6 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +42,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import com.example.act22.data.repository.AssetRepositoryFirebaseImpl
+import com.example.act22.payment.PaymentSheetManager
+import android.util.Log
 
 sealed class Screen(val route: String) {
     object StartPage : Screen("Start_Page")
@@ -64,6 +67,7 @@ sealed class Screen(val route: String) {
     }
 }
 
+val LocalPaymentSheetManager = staticCompositionLocalOf<PaymentSheetManager?> { null }
 
 class MainActivity : ComponentActivity() {
 
@@ -88,13 +92,24 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val aiViewModel: AIViewModel by viewModels()
-
+    private lateinit var paymentSheetManager: PaymentSheetManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
+        try {
+            // Initialize Stripe PaymentConfiguration
+            com.stripe.android.PaymentConfiguration.init(
+                applicationContext,
+                "pk_test_51OPwQhHuhy8PxLxbxmOKHZGnpUNgFXMJBKxGyHXgKhEbwwKxEPtUAh8Ry8PoQDqyXHtxNvHI8iZQEtWLYhLvlHSq00yPrEPwbf"
+            )
+            Log.d("MainActivity", "Stripe PaymentConfiguration initialized successfully")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to initialize Stripe PaymentConfiguration: ${e.message}")
         }
 
         // Check Google Play Services
@@ -113,16 +128,25 @@ class MainActivity : ComponentActivity() {
         val startScreen = if (authViewModel.checkIfUserIsLoggedIn()){ Screen.MainPage.route } else { Screen.StartPage.route }
 
         enableEdgeToEdge()
+        try {
+            paymentSheetManager = PaymentSheetManager(this)
+            Log.d("MainActivity", "PaymentSheetManager initialized successfully")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to initialize PaymentSheetManager: ${e.message}")
+        }
+
         setContent {
             ACT22Theme (){
-                NavigationSetUp(
-                    startScreen,
-                    authViewModel,
-                    portfolioViewModel,
-                    assetManagerViewModel,
-                    assetPriceViewModel,
-                    aiViewModel
-                )
+                CompositionLocalProvider(LocalPaymentSheetManager provides paymentSheetManager) {
+                    NavigationSetUp(
+                        startScreen,
+                        authViewModel,
+                        portfolioViewModel,
+                        assetManagerViewModel,
+                        assetPriceViewModel,
+                        aiViewModel
+                    )
+                }
             }
         }
     }
