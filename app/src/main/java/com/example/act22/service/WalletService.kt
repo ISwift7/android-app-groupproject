@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 
 class WalletService {
     private val client = OkHttpClient()
-    private val baseUrl = "https://humane-jaybird-genuinely.ngrok-free.app/android"
+    private val baseUrl = "https://backend-hh3k.onrender.com/android"
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     suspend fun createPaymentIntent(amount: Double, idToken: String): Result<String> = withContext(Dispatchers.IO) {

@@ -4,7 +4,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BASE_URL = "https://humane-jaybird-genuinely.ngrok-free.app/android/"
+    private const val BASE_URL = "https://backend-hh3k.onrender.com/android/"
 
     private val retrofit by lazy {
         Retrofit.Builder()
