@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Divider
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun UserProfile(
@@ -159,6 +160,13 @@ fun WalletTab(
     val isLoading by walletViewModel.isLoading.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Automatically load balance when the tab is opened
+    LaunchedEffect(Unit) {
+        walletViewModel.refreshBalance { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Format card number (no spacing)
     fun formatCardNumber(input: String): String {

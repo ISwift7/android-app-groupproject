@@ -46,6 +46,19 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            pickFirsts += "META-INF/MANIFEST.MF"
+        }
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("org.bouncycastle:bcprov-jdk18on:1.78.1")
+        eachDependency {
+            if (requested.group == "org.bouncycastle") {
+                useVersion("1.78.1")
+            }
         }
     }
 }
@@ -65,6 +78,10 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage.ktx)
     implementation(libs.androidx.benchmark.common)
+    implementation("com.android.identity:identity-jvm:202411.1") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+    }
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -100,9 +117,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("com.stripe:stripe-android:20.35.0") {
         exclude(group = "com.google.android.material", module = "material")
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
     }
-    implementation("com.stripe:financial-connections:20.35.0")
-    implementation("com.stripe:payments-ui-core:20.35.0")
+    implementation("com.stripe:financial-connections:20.35.0") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+    }
+    implementation("com.stripe:payments-ui-core:20.35.0") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+    }
 
     implementation("androidx.compose.ui:ui-tooling:1.5.4")
     implementation("androidx.compose.material:material:1.5.4")
@@ -119,5 +141,10 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Firebase Cloud Messaging
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
 }

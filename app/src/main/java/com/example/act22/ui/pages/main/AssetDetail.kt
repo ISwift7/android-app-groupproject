@@ -24,6 +24,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.act22.data.model.Crypto
@@ -37,21 +38,44 @@ import kotlin.math.round
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.act22.ui.components.TradingDialog
 import com.example.act22.viewmodel.TradingViewModel
+import com.example.act22.network.GraphDataPoint
+import com.example.act22.viewmodel.PriceAlertViewModel
+import com.example.act22.data.model.PriceAlert
 
 @Composable
 fun AssetDetails(
     navController: NavController,
-    assetPriceViewModel: AssetPriceViewModel,
-    portfolioViewModel: PortfolioViewModel,
-    aiViewModel: AIViewModel,
+    assetPriceViewModel: AssetPriceViewModel = viewModel(),
+    portfolioViewModel: PortfolioViewModel = viewModel(),
+    aiViewModel: AIViewModel = viewModel(),
     assetId: String
 ) {
     val assetUiState by assetPriceViewModel.assetUiState.collectAsState()
     val chartUiState by assetPriceViewModel.chartUiState.collectAsState()
 
+    // Initial fetch of asset info
+    LaunchedEffect(assetId) {
+        assetPriceViewModel.fetchAssetInformation(
+            id = assetId,
+            isCrypto = false,
+            shouldUpdateGraph = false  // Don't start graph updates yet
+        )
+    }
+
+    // Update isCrypto and start graph updates when we get the asset info
+    LaunchedEffect(assetUiState) {
+        if (assetUiState is AssetPriceViewModel.AssetUiState.Success) {
+            val asset = (assetUiState as AssetPriceViewModel.AssetUiState.Success).asset
+            // Start continuous graph updates
+            assetPriceViewModel.startGraphUpdates(assetId, asset is Crypto)
+        }
+    }
+
+    // Clean up graph updates when leaving the screen
     DisposableEffect(assetId) {
-        assetPriceViewModel.fetchAssetInformation(assetId)
-        onDispose { }
+        onDispose {
+            assetPriceViewModel.stopGraphUpdates()
+        }
     }
 
     MainScaffold(navController) {
@@ -71,7 +95,6 @@ fun AssetDetails(
         }
     }
 }
-
 
 @Composable
 fun AssetDetailsColumn(
@@ -200,18 +223,19 @@ fun AssetChart(
         modifier = Modifier
             .fillMaxWidth()
             .height(300.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = 20.dp)
-            .padding(end = 20.dp),
-        contentAlignment = Alignment.Center
     ) {
         when (chartUiState) {
-            is AssetPriceViewModel.ChartUiState.Loading -> LoadingSpinner()
-            is AssetPriceViewModel.ChartUiState.Error -> ErrorMessage(
-                (chartUiState as AssetPriceViewModel.ChartUiState.Error).message
-            )
+            is AssetPriceViewModel.ChartUiState.Loading -> {
+                StockChartPlaceholder(height = 300.dp)
+            }
+            is AssetPriceViewModel.ChartUiState.Error -> {
+                StockChartPlaceholder(height = 300.dp)
+            }
             is AssetPriceViewModel.ChartUiState.Success -> {
-                DrawChart((chartUiState as AssetPriceViewModel.ChartUiState.Success).pricePoints)
+                StockChartPlaceholder(
+                    height = 300.dp,
+                    dataPoints = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
+                )
             }
         }
     }
@@ -292,33 +316,34 @@ fun AssetDetailsTabs(
         listOf("Details")
     }
 
+    Column {
         TabRow(
             selectedTabIndex = selectedTabIndex,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondary,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                    color = MaterialTheme.colorScheme.onSecondary // Custom indicator color
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
+                    modifier = Modifier.height(40.dp),
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index },
-                    text = { Text(title, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center) }
+                    text = { Text(title, style = MaterialTheme.typography.bodySmall) }
                 )
             }
         }
 
         when (tabs[selectedTabIndex]) {
-            "Details" -> AssetBasicDetails(asset)
             "Details & Analytics" -> AssetAnalyticsTabs(aiViewModel, asset)
             "AI Predictions" -> AssetPredictions(aiViewModel, asset)
-            "Price alerts" -> AssetPriceAlerts(asset)
+            "Price alerts" -> AssetPriceAlerts(asset = asset, viewModel = viewModel())
         }
-
+    }
 }
 
 @Composable
@@ -530,16 +555,30 @@ fun AssetPredictions(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Receive notification\nwhen price reaches a set price point",
+                text = "Curve AI Price Prediction",
                 style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 10.dp)
             )
-            Text(
-                text = "You can set up to 3 price alerts",
-                style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.None),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            when (predictionState) {
+                is AIViewModel.UiState.Error -> ErrorMessage((predictionState as AIViewModel.UiState.Error).message)
+                is AIViewModel.UiState.Success -> {
+                    val predictions = (predictionState as AIViewModel.UiState.Success).data
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        predictions.forEach { prediction ->
+                            TypingTextAnimation(
+                                fullText = prediction,
+                                modifier = Modifier.padding(top = 10.dp)
+                            )
+                        }
+                    }
+                }
+                else -> LoadingSpinner()
+            }
         }
     }
 }
@@ -547,10 +586,17 @@ fun AssetPredictions(
 
 @Composable
 fun AssetPriceAlerts(
-    asset: Asset
+    asset: Asset,
+    viewModel: PriceAlertViewModel = viewModel()
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var priceAlerts by remember { mutableStateOf(listOf<PriceAlert>()) }
+    val priceAlerts by viewModel.priceAlerts.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Fetch alerts when the component is first displayed
+    LaunchedEffect(asset.ID) {
+        viewModel.fetchPriceAlertsForAsset(asset)
+    }
 
     Column(
         modifier = Modifier
@@ -596,61 +642,90 @@ fun AssetPriceAlerts(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
-                PriceAlertTable(priceAlerts = priceAlerts)
+                PriceAlertTable(
+                    priceAlerts = priceAlerts,
+                    onDeleteAlert = { alert -> viewModel.deletePriceAlert(alert, asset) }
+                )
             }
 
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = "Set alert",
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(25))
-                    .background(MaterialTheme.colorScheme.secondary)
-                    .padding(5.dp)
-                    .clickable { showDialog = true },
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
+            if (priceAlerts.size < 3) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "Set alert",
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(25))
+                        .background(MaterialTheme.colorScheme.secondary)
+                        .padding(5.dp)
+                        .clickable { showDialog = true },
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     }
 
     if (showDialog) {
         AddPriceAlertDialog(
+            asset = asset,
             onDismiss = { showDialog = false },
-            onConfirm = { price ->
-                priceAlerts = priceAlerts + PriceAlert(date = "Today", price = price)
+            onConfirm = { price, alertType ->
+                viewModel.addPriceAlert(asset, price, alertType)
                 showDialog = false
+            }
+        )
+    }
+
+    error?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Error") },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text("OK")
+                }
             }
         )
     }
 }
 
-
 @Composable
 fun PriceAlertTable(
-    priceAlerts: List<PriceAlert>
+    priceAlerts: List<PriceAlert>,
+    onDeleteAlert: (PriceAlert) -> Unit
 ) {
-    val maxRows = 3
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Header Row
+        // Header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("No.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            Text("Date", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(2.5f))
-            Text("Price", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(2f))
-            Spacer(Modifier.weight(0.5f))
+            Text(
+                text = "Type",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Target",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Status",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(48.dp)) // Space for delete button
         }
 
-        repeat(maxRows) { index ->
-            val alert = priceAlerts.getOrNull(index)
+        // Alert rows
+        priceAlerts.forEach { alert ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -660,97 +735,260 @@ fun PriceAlertTable(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (alert != null) "${index + 1}" else "-",
+                    text = alert.alert_type.capitalize(),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(0.8f)
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = alert?.date ?: "--/--/--",
+                    text = "$${String.format("%.2f", alert.target_price)}",
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(2.5f)
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = alert?.price?.toString() ?: "-",
+                    text = alert.status.capitalize(),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(2f)
+                    modifier = Modifier.weight(1f)
                 )
-                if (alert != null) {
+                IconButton(
+                    onClick = { onDeleteAlert(alert) },
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Alert",
-                        modifier = Modifier
-                            .padding(end = 5.dp)
-                            .size(25.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(MaterialTheme.colorScheme.error)
-                            .padding(5.dp)
-
-                            .clickable { /* Handle delete action */ },
-                        tint = MaterialTheme.colorScheme.onError
+                        tint = MaterialTheme.colorScheme.error
                     )
-                } else {
-                    Spacer(Modifier.weight(0.5f))
                 }
             }
+        }
+
+        // Empty state
+        if (priceAlerts.isEmpty()) {
+            Text(
+                text = "No price alerts set",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
-
 @Composable
 fun AddPriceAlertDialog(
+    asset: Asset,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (Double, String) -> Unit
 ) {
     var enteredPrice by remember { mutableStateOf("") }
+    var selectedAlertType by remember { mutableStateOf("above") }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surface),
         title = {
-            Text("Add Price Alert", style = MaterialTheme.typography.titleSmall)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Add Price Alert",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Current price: $${String.format("%.2f", asset.price)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         },
         text = {
-            Column {
-                Text("Enter the price for the alert:", color = MaterialTheme.colorScheme.onSurface)
-                Spacer(Modifier.height(8.dp))
-                TextField(
-                    value = enteredPrice,
-                    onValueChange = { enteredPrice = it },
-                    label = { Text("Price") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-                        focusedLabelColor = MaterialTheme.colorScheme.onSurface,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Alert type selection
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Alert type",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Above price option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedAlertType = "above" }
+                                .background(
+                                    if (selectedAlertType == "above")
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surface
+                                )
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedAlertType == "above",
+                                onClick = { selectedAlertType = "above" },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary,
+                                    unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Above price",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (selectedAlertType == "above")
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        
+                        // Below price option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedAlertType = "below" }
+                                .background(
+                                    if (selectedAlertType == "below")
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surface
+                                )
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedAlertType == "below",
+                                onClick = { selectedAlertType = "below" },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary,
+                                    unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Below price",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (selectedAlertType == "below")
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+
+                // Price input
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = enteredPrice,
+                        onValueChange = { enteredPrice = it },
+                        label = { Text("Target Price") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        prefix = { Text("$", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val price = enteredPrice.toDoubleOrNull()
-                    if (price != null) {
-                        onConfirm(price)
+                    enteredPrice.toDoubleOrNull()?.let { price ->
+                        onConfirm(price, selectedAlertType)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.secondary)
+                enabled = enteredPrice.toDoubleOrNull() != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                )
             ) {
-                Text("Add")
+                Text(
+                    "Add Alert",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         },
         dismissButton = {
             TextButton(
-                onClick = { onDismiss() }
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Cancel")
+                Text(
+                    "Cancel",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surface
+        }
     )
 }
 
-
-// Sample Data Class for PriceAlert
-data class PriceAlert(val date: String, val price: Double)
+@Composable
+fun StockChartPlaceholder(
+    height: Dp,
+    dataPoints: List<GraphDataPoint> = emptyList()
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        if (dataPoints.isEmpty()) {
+            CircularProgressIndicator()
+        } else {
+            // Draw the chart with the data points
+            val pricePoints = dataPoints.map { it.price }
+            DrawChart(pricePoints = pricePoints)
+        }
+    }
+}

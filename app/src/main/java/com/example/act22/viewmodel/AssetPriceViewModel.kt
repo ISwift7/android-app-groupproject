@@ -6,10 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.act22.data.model.Asset
 import com.example.act22.data.repository.AssetRepository
 import com.example.act22.data.repository.AssetRepositoryTestImp
+import com.example.act22.network.GraphDataPoint
+import com.example.act22.network.RetrofitInstance
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Job
 
 class AssetPriceViewModel(
     private val repository: AssetRepository = AssetRepositoryTestImp()
@@ -23,7 +28,7 @@ class AssetPriceViewModel(
 
     sealed class ChartUiState {
         object Loading : ChartUiState()
-        data class Success(val pricePoints: List<Double>) : ChartUiState()
+        data class Success(val points: List<GraphDataPoint>) : ChartUiState()
         data class Error(val message: String) : ChartUiState()
     }
 
@@ -33,17 +38,33 @@ class AssetPriceViewModel(
     private val _chartUiState = MutableStateFlow<ChartUiState>(ChartUiState.Loading)
     val chartUiState: StateFlow<ChartUiState> = _chartUiState
 
-    fun fetchAssetInformation(id: String) {
+    private var graphUpdateJob: Job? = null
+
+    fun fetchAssetInformation(id: String, isCrypto: Boolean, shouldUpdateGraph: Boolean = true) {
         viewModelScope.launch {
             fetchAsset(id)
-            fetchYearlyHistoryPricePoints(id)
-            
-            // Start periodic price updates
-            while (true) {
-                delay(30000) // Update every 30 seconds
-                fetchAsset(id)
+            if (shouldUpdateGraph) {
+                fetchGraphData(id, isCrypto)
             }
         }
+    }
+
+    fun startGraphUpdates(id: String, isCrypto: Boolean) {
+        // Cancel any existing update job
+        stopGraphUpdates()
+
+        // Start a new update job for graph only
+        graphUpdateJob = viewModelScope.launch {
+            while (true) {
+                fetchGraphData(id, isCrypto)
+                delay(300000) // Update every 5 minutes
+            }
+        }
+    }
+
+    fun stopGraphUpdates() {
+        graphUpdateJob?.cancel()
+        graphUpdateJob = null
     }
 
     private suspend fun fetchAsset(id: String) {
@@ -60,13 +81,41 @@ class AssetPriceViewModel(
         }
     }
 
-    suspend fun fetchYearlyHistoryPricePoints(id: String) {
+    private suspend fun fetchGraphData(id: String, isCrypto: Boolean) {
         try {
-            _chartUiState.value = ChartUiState.Loading
-            val pricePoints = repository.getYearlyHistoryPricePoints(id)
-            _chartUiState.value = ChartUiState.Success(pricePoints)
+            // Don't set loading state for updates to avoid flickering
+            if (_chartUiState.value is ChartUiState.Loading) {
+                _chartUiState.value = ChartUiState.Loading
+            }
+            
+            // Get Firebase auth token
+            val user = FirebaseAuth.getInstance().currentUser
+            val token = user?.getIdToken(false)?.await()?.token
+                ?: throw Exception("Not authenticated")
+
+            val response = RetrofitInstance.graphApi.getAssetGraph(
+                token = "Bearer $token",
+                symbol = id,
+                isCrypto = isCrypto
+            )
+
+            if (response.isSuccessful) {
+                val graphData = response.body()?.data
+                if (graphData != null) {
+                    _chartUiState.value = ChartUiState.Success(graphData.points)
+                } else {
+                    _chartUiState.value = ChartUiState.Error("No graph data available")
+                }
+            } else {
+                _chartUiState.value = ChartUiState.Error("Failed to fetch graph data")
+            }
         } catch (e: Exception) {
-            _chartUiState.value = ChartUiState.Error("Failed to load chart data: ${e.message}")
+            _chartUiState.value = ChartUiState.Error("Failed to load graph: ${e.message}")
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopGraphUpdates()
     }
 }

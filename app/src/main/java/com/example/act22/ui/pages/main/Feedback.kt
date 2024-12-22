@@ -17,20 +17,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.util.*
 
 
 @Composable
 fun FeedbackPage(navController: NavController) {
     MainScaffold(navController) {
-        FeedBackColumn()
+        FeedBackColumn(navController)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedBackColumn() {
+fun FeedBackColumn(navController: NavController) {
     var selectedRating by remember { mutableStateOf(0) }
     var feedbackText by remember { mutableStateOf("") }
+    var isSubmitted by remember { mutableStateOf(false) }
+
+    if (isSubmitted) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Thank you for your feedback!",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            BigButton("Back") {
+                navController.popBackStack()
+            }
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -81,7 +108,32 @@ fun FeedBackColumn() {
 
         val context = LocalContext.current
         BigButton("Submit feedback") {
-            Toast.makeText(context, "Toast message here", Toast.LENGTH_SHORT).show()
+            val auth = FirebaseAuth.getInstance()
+            val userId = auth.currentUser?.uid
+            
+            if (userId == null) {
+                Toast.makeText(context, "Please sign in to submit feedback", Toast.LENGTH_SHORT).show()
+                return@BigButton
+            }
+
+            val db = FirebaseFirestore.getInstance()
+            val review = hashMapOf(
+                "userId" to userId,
+                "rating" to selectedRating,
+                "comment" to feedbackText,
+                "timestamp" to Date()
+            )
+
+            db.collection("androidUsers")
+                .document(userId)
+                .collection("userReviews")
+                .add(review)
+                .addOnSuccessListener {
+                    isSubmitted = true
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to submit feedback", Toast.LENGTH_SHORT).show()
+                }
         }
     }
 }
