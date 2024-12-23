@@ -42,49 +42,71 @@ class AuthenticationViewModel : ViewModel() {
             return
         }
 
+        Log.d("SignUp", "Starting sign up process for email: $email")
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
+                    Log.d("SignUp", "User created successfully in Firebase")
                     auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { signInTask ->
                         if (signInTask.isSuccessful) {
+                            Log.d("SignUp", "User signed in after creation")
                             val user = auth.currentUser
                             user?.let { firebaseUser ->
                                 firebaseUser.getIdToken(true)
                                     .addOnCompleteListener { tokenTask ->
                                         if (tokenTask.isSuccessful) {
                                             val idToken = tokenTask.result.token
+                                            Log.d("SignUp", "Got ID token, creating user in backend")
                                             viewModelScope.launch {
                                                 try {
                                                     backendService.createUser(email, idToken!!)
                                                         .onSuccess {
+                                                            Log.d("EmailVerification", "About to send verification email to: $email")
                                                             firebaseUser.sendEmailVerification()
                                                                 .addOnCompleteListener { verificationTask ->
                                                                     if (verificationTask.isSuccessful) {
+                                                                        Log.d("EmailVerification", "Verification email sent successfully")
                                                                         onResult(true, "Registration successful! Please check your email to verify your account.")
                                                                     } else {
-                                                                        onResult(false, "Failed to send verification email. Please try again.")
+                                                                        val exception = verificationTask.exception
+                                                                        Log.e("EmailVerification", "Failed to send verification email", exception)
+                                                                        val errorMessage = when {
+                                                                            exception?.message?.contains("too-many-requests") == true -> 
+                                                                                "Too many verification emails sent. Please try again later."
+                                                                            exception?.message?.contains("invalid-email") == true ->
+                                                                                "Invalid email address format."
+                                                                            else -> "Failed to send verification email: ${exception?.message ?: "Unknown error"}"
+                                                                        }
+                                                                        onResult(false, errorMessage)
                                                                     }
                                                                 }
                                                         }
                                                         .onFailure { e ->
+                                                            Log.e("SignUp", "Failed to create user in backend", e)
                                                             onResult(false, "Failed to create user in backend: ${e.message}")
                                                         }
                                                 } catch (e: Exception) {
+                                                    Log.e("SignUp", "Exception during user creation", e)
                                                     onResult(false, "Failed to create user: ${e.message}")
                                                 }
                                             }
                                         } else {
+                                            Log.e("SignUp", "Failed to get ID token", tokenTask.exception)
                                             onResult(false, "Failed to get authentication token")
                                         }
                                     }
-                            } ?: onResult(false, "User registration failed. Please try again.")
+                            } ?: run {
+                                Log.e("SignUp", "User is null after successful sign in")
+                                onResult(false, "User registration failed. Please try again.")
+                            }
                         } else {
+                            Log.e("SignUp", "Failed to sign in after creation", signInTask.exception)
                             onResult(false, "Automatic sign-in failed. Please try logging in manually.")
                         }
                     }
                 } else {
                     val errorMessage = getErrorMessage(task.exception)
-                    Log.e("SignUP", "${task.exception}")
+                    Log.e("SignUp", "Failed to create user", task.exception)
                     onResult(false, errorMessage)
                 }
             }
