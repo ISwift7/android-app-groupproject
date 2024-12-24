@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,10 +57,6 @@ fun UserPortfolio(
     portfolioViewModel: PortfolioViewModel = PortfolioViewModel()
 ) {
     MainScaffold(navController) {
-        val portfolio by portfolioViewModel.portfolioState.collectAsState()
-        val walletBalance by portfolioViewModel.walletBalance.collectAsState()
-        
-        // Update portfolio data when the component is first displayed
         LaunchedEffect(Unit) {
             portfolioViewModel.refreshPortfolio()
         }
@@ -77,36 +74,14 @@ fun UserPortfolio(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
             ) {
-                // Display wallet balance
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Wallet Balance",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$${String.format("%.2f", walletBalance)}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
                 PortfolioOverview(
                     navController,
                     portfolioViewModel
                 )
-                PortfolioTabs(navController, portfolioViewModel)
+                PortfolioTabs(
+                    navController,
+                    portfolioViewModel
+                )
             }
         }
     }
@@ -117,7 +92,7 @@ fun PortfolioTabs(
     navController: NavController,
     portfolioViewModel: PortfolioViewModel
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -150,6 +125,7 @@ fun PortfolioOverview(
     portfolioViewModel: PortfolioViewModel
 ) {
     val portfolio by portfolioViewModel.portfolioState.collectAsState()
+    val walletBalance by portfolioViewModel.walletBalance.collectAsState()
     
     // Update prices when the component is first displayed
     LaunchedEffect(Unit) {
@@ -159,7 +135,7 @@ fun PortfolioOverview(
     // Set up periodic updates (every 30 seconds)
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30000) // 30 seconds
+            delay(30000)
             portfolioViewModel.refreshPortfolio()
         }
     }
@@ -169,51 +145,57 @@ fun PortfolioOverview(
     val techStockCount = portfolio.techStocks.size
     val cryptoCount = portfolio.cryptos.size
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
-            .background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.Center
-    ) {
         Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(bottom = 25.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
         ) {
-            // Display total portfolio value
             Text(
                 text = "Total Value: $${String.format("%.2f", totalPortfolioValue)}",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimary
             )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Display count of stocks and cryptos
             Text(
                 text = "Tech Stocks: $techStockCount | Cryptos: $cryptoCount",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary
             )
+            WalletInformation(walletBalance, navController)
         }
-        Box ( //TODO wallet
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 20.dp),
-            contentAlignment = Alignment.BottomEnd
-        ){
-            Icon(
-                imageVector = Icons.Outlined.Edit,
-                contentDescription = "Start Trading",
-                modifier = Modifier
-                    .size(35.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.secondary)
-                    .padding(5.dp)
-                    .clickable { navController.navigate(Screen.MainPage.route) },
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
-        }
+}
+
+@Composable
+fun WalletInformation(
+    walletBalance: Double,
+    navController: NavController
+){
+    Row(
+        modifier = Modifier
+            .height(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.secondary)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .clickable { navController.navigate(Screen.Profile.route) },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ){
+        Text(
+            text = "Wallet balance: \$${String.format("%.2f", walletBalance)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+        Icon(
+            imageVector = Icons.Outlined.Edit,
+            contentDescription = "Start Trading",
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(15.dp)
+        )
     }
+
 }
 
 
