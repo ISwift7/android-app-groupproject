@@ -71,7 +71,7 @@ class AuthenticationViewModel : ViewModel() {
                                                                         val exception = verificationTask.exception
                                                                         Log.e("EmailVerification", "Failed to send verification email", exception)
                                                                         val errorMessage = when {
-                                                                            exception?.message?.contains("too-many-requests") == true -> 
+                                                                            exception?.message?.contains("too-many-requests") == true ->
                                                                                 "Too many verification emails sent. Please try again later."
                                                                             exception?.message?.contains("invalid-email") == true ->
                                                                                 "Invalid email address format."

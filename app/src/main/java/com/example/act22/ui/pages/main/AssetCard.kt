@@ -39,11 +39,11 @@ fun MainAssetCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 10.dp)
+                    .padding(10.dp)
             ) {
                 Text(
                     text = asset.name,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     text = "Price: $${String.format("%.2f", asset.price)}",

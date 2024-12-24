@@ -50,10 +50,8 @@ class AssetPriceViewModel(
     }
 
     fun startGraphUpdates(id: String, isCrypto: Boolean) {
-        // Cancel any existing update job
         stopGraphUpdates()
 
-        // Start a new update job for graph only
         graphUpdateJob = viewModelScope.launch {
             while (true) {
                 fetchGraphData(id, isCrypto)

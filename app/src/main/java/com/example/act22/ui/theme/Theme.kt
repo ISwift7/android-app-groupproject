@@ -30,7 +30,8 @@ private val LightColorScheme = lightColorScheme(
     onTertiaryContainer = DarkPurple60,
     onBackground = DarkPurple60,
     onSurface = Purple40,
-    onSurfaceVariant = Lilac40
+    onSurfaceVariant = Lilac40,
+    error = Error
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -54,7 +55,9 @@ private val DarkColorScheme = darkColorScheme(
     onTertiaryContainer = DarkPurple60,
     onBackground = White,
     onSurface = Purple20,
-    onSurfaceVariant = Lilac20
+    onSurfaceVariant = Lilac20,
+
+    error = Error
 )
 
 @Composable

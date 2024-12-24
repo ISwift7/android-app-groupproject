@@ -36,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.round
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.act22.activity.Screen
 import com.example.act22.ui.components.TradingDialog
 import com.example.act22.viewmodel.TradingViewModel
 import com.example.act22.network.GraphDataPoint
@@ -58,7 +59,7 @@ fun AssetDetails(
         assetPriceViewModel.fetchAssetInformation(
             id = assetId,
             isCrypto = false,
-            shouldUpdateGraph = false  // Don't start graph updates yet
+            shouldUpdateGraph = false
         )
     }
 
@@ -66,7 +67,6 @@ fun AssetDetails(
     LaunchedEffect(assetUiState) {
         if (assetUiState is AssetPriceViewModel.AssetUiState.Success) {
             val asset = (assetUiState as AssetPriceViewModel.AssetUiState.Success).asset
-            // Start continuous graph updates
             assetPriceViewModel.startGraphUpdates(assetId, asset is Crypto)
         }
     }
@@ -168,8 +168,14 @@ fun AssetActions(
     navController: NavController
 ) {
     var showTradingDialog by remember { mutableStateOf(false) }
+    var tradingMode by remember { mutableStateOf(true) }
     val tradingViewModel: TradingViewModel = viewModel()
-    val isInPortfolio = portfolioViewModel.isAssetInPortfolio(asset)
+    val portfolio by portfolioViewModel.portfolioState.collectAsState()
+    var isInPortfolio = portfolioViewModel.isAssetInPortfolio(asset)
+
+    LaunchedEffect(portfolio){
+         isInPortfolio = portfolioViewModel.isAssetInPortfolio(asset)
+    }
 
     Row(
         modifier = modifier
@@ -182,24 +188,30 @@ fun AssetActions(
         verticalAlignment = Alignment.Top
     ) {
         Button(
-            onClick = { showTradingDialog = true },
+            onClick = {
+                showTradingDialog = true
+                tradingMode = true
+                      },
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.secondary
             ),
             modifier = Modifier.weight(1f)
         ) {
-            Text(if (isInPortfolio) "Buy More" else "Buy")
+            Text("Buy")
         }
         if (isInPortfolio) {
             Spacer(modifier = Modifier.width(8.dp))
             Button(
-                onClick = { navController.navigate("portfolio") },
+                onClick = {
+                    showTradingDialog = true
+                    tradingMode = false
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 ),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Go to Portfolio to Sell")
+                Text("Sell")
             }
         }
     }
@@ -207,10 +219,11 @@ fun AssetActions(
     if (showTradingDialog) {
         TradingDialog(
             asset = asset,
-            isInPortfolio = false, // Always show buy dialog
+            isInPortfolio = isInPortfolio,
             onDismiss = { showTradingDialog = false },
             tradingViewModel = tradingViewModel,
-            portfolioViewModel = portfolioViewModel
+            portfolioViewModel = portfolioViewModel,
+            isBuyingMode = tradingMode
         )
     }
 }
@@ -417,9 +430,6 @@ fun AssetBasicDetails(
                         AssetBasicDetailsText("High : $${String.format("%.2f", asset.high)}")
                         AssetBasicDetailsText("Previous Close : $${String.format("%.2f", asset.previous_close)}")
                     }
-
-                    is Crypto -> TODO()
-                    is TechStock -> TODO()
                 }
             }
         }

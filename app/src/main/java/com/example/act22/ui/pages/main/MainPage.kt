@@ -118,7 +118,7 @@ fun CustomSearchBar(onSearch: (String) -> Unit = {}) {
             CompactTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = "Search...",
+                placeholder = "Search by ID...",
                 onDone = { onSearch(searchQuery) }
             )
         }
@@ -329,7 +329,7 @@ fun AssetList(
         ErrorMessage("No asset found!")
     } else {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(bottom = 25.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
             content = {

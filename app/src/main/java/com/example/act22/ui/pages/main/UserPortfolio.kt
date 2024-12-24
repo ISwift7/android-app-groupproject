@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -194,7 +195,7 @@ fun PortfolioOverview(
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
-        Box (
+        Box ( //TODO wallet
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 10.dp, vertical = 20.dp),
@@ -224,7 +225,7 @@ fun PortfolioAssets(
     val portfolio by portfolioViewModel.portfolioState.collectAsState()
     
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 25.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
@@ -256,6 +257,7 @@ fun PortfolioAssetCard(
     asset: Asset
 ){
     var showTradingDialog by remember { mutableStateOf(false) }
+    var tradingMode by remember { mutableStateOf(true) }
     val tradingViewModel: TradingViewModel = viewModel()
 
     Card(
@@ -270,51 +272,65 @@ fun PortfolioAssetCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         StockChartPlaceholder(100.dp)
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = asset.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "Quantity: ${String.format("%.4f", asset.quantity)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "Price: $${String.format("%.2f", asset.price)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "Total Value: $${String.format("%.2f", asset.price * asset.quantity)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            
-            // Trading buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
             ) {
                 Button(
-                    onClick = { showTradingDialog = true },
+                    onClick = {
+                        showTradingDialog = true
+                        tradingMode = true
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    modifier = Modifier.height(60.dp)
                 ) {
-                    Text("Buy More")
+                    Text("Buy")
                 }
                 Button(
-                    onClick = { showTradingDialog = true },
+                    onClick = {
+                        showTradingDialog = true
+                        tradingMode = false
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
-                    )
+                    ),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    modifier = Modifier.height(60.dp)
                 ) {
                     Text("Sell")
                 }
             }
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = asset.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Quantity: ${String.format("%.4f", asset.quantity)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Price: $${String.format("%.2f", asset.price)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Total Value: $${String.format("%.2f", asset.price * asset.quantity)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
+
     }
 
     if (showTradingDialog) {
@@ -322,7 +338,8 @@ fun PortfolioAssetCard(
             asset = asset,
             isInPortfolio = true,
             onDismiss = { showTradingDialog = false },
-            tradingViewModel = tradingViewModel
+            tradingViewModel = tradingViewModel,
+            isBuyingMode = tradingMode
         )
     }
 }
@@ -338,11 +355,12 @@ fun AITab() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(),
-            elevation = CardDefaults.cardElevation(2.dp)
+                .padding(10.dp),
+            elevation = CardDefaults.elevatedCardElevation(2.dp),
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

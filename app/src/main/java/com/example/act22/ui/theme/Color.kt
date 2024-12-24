@@ -20,4 +20,6 @@ val Purple20 = Color(0xFF9545C4)
 val Lilac40 = Color(0xFF9A96DE)
 val Lilac20 = Color(0xFFB2B0E7)
 
+val Error = Color(0xFFB90000)
+
 
