@@ -102,4 +102,70 @@ class WalletViewModel : ViewModel() {
     fun setLoading(loading: Boolean) {
         _isLoading.value = loading
     }
+
+    fun validateAndProcessPayment(
+        amount: String,
+        cardNumber: String,
+        expiryDate: String,
+        cvv: String,
+        onSuccess: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val amountValue = amount.toDoubleOrNull()
+        if (amountValue == null) {
+            onError("Please enter a valid amount")
+            return
+        }
+
+        val cardDigits = cardNumber.filter { it.isDigit() }
+        if (cardDigits.length != 16) {
+            onError("Please enter a valid card number")
+            return
+        }
+
+        if (cvv.length != 3) {
+            onError("Please enter a valid CVV")
+            return
+        }
+
+        val expiryDigits = expiryDate.filter { it.isDigit() }
+        if (expiryDigits.length != 4) {
+            onError("Please enter expiry date in MM/YY format")
+            return
+        }
+
+        val monthStr = expiryDigits.take(2)
+        val yearStr = expiryDigits.drop(2)
+        val expiryMonth = monthStr.toIntOrNull()
+        val expiryYear = yearStr.toIntOrNull()?.let { 2000 + it }
+
+        if (expiryMonth == null || expiryYear == null || expiryMonth !in 1..12) {
+            onError("Please enter a valid expiry date")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                setLoading(true)
+                createPayment(
+                    amount = amountValue,
+                    onSuccess = { clientSecret ->
+                        onSuccess(clientSecret)
+                        refreshBalance { error ->
+                            if (error != null) {
+                                onError(error)
+                            }
+                        }
+                    },
+                    onError = { error ->
+                        onError(error)
+                    }
+                )
+            } catch (e: Exception) {
+                onError("Network error: Please check your connection")
+            } finally {
+                setLoading(false)
+            }
+        }
+    }
 } 

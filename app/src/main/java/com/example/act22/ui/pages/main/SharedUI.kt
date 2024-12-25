@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -44,48 +43,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.act22.R
 import kotlin.random.Random
-
-
-@Composable
-fun AssetCardContent(asset: Asset) {
-    Row(
-        modifier = Modifier.padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AssetImage(asset)
-        Column {
-            Text(
-                text = asset.name,
-                style = MaterialTheme.typography.bodyLarge.copy(textDecoration = TextDecoration.None),
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Price: $${String.format("%.2f", asset.price)}",
-                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (asset is TechStock) {
-                Text(
-                    text = "Industry: ${asset.sector}",
-                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Country: ${asset.country}",
-                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            if (asset is Crypto) {
-                Text(
-                    text = "Blockchain: ${asset.blockchain}",
-                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun AssetImage(asset: Asset) {
@@ -113,67 +70,6 @@ fun AssetImage(asset: Asset) {
                 )
                 .padding(5.dp)
         )
-    }
-}
-
-@SuppressLint("DefaultLocale")
-@Composable
-fun AssetDetails(asset: Asset) {
-    Column(
-        modifier = Modifier
-            .fillMaxHeight()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AssetImage(asset)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = asset.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "Price: $${String.format("%.2f", asset.price)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (asset is TechStock) {
-                    Text(
-                        text = "Industry: ${asset.sector}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Country: ${asset.country}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (asset is Crypto) {
-                    Text(
-                        text = "Blockchain: ${asset.blockchain}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-
-
-fun formatLargeNumber(number: Double): String {
-    return when {
-        number >= 1_000_000_000 -> String.format("%.1fB", number / 1_000_000_000) // Billions
-        number >= 1_000_000 -> String.format("%.1fM", number / 1_000_000) // Millions
-        else -> String.format("%.2f", number) // Less than 1 million, display normally
     }
 }
 

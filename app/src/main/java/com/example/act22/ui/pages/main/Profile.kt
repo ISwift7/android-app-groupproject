@@ -32,6 +32,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Divider
+import androidx.compose.material.icons.filled.Refresh
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.LaunchedEffect
 
@@ -40,15 +41,13 @@ fun UserProfile(
     navController: NavController
 ){
     MainScaffold(navController) {
-        UserInfo(navController)
+        UserInfo()
         UserWaletAndPlan()
     }
 }
 
 @Composable
-fun UserInfo(
-    navController: NavController
-){
+fun UserInfo(){
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val userId = currentUser?.uid ?: "Not logged in"
@@ -57,10 +56,11 @@ fun UserInfo(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .height(200.dp)
             .background(MaterialTheme.colorScheme.primary)
             .padding(top = 50.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
         UserInfoField("userID: ", userId)
         UserInfoField("email: ", userEmail)
@@ -70,8 +70,7 @@ fun UserInfo(
 @Composable
 fun UserInfoField(
     prompt: String,
-    value: String,
-    onClick: (() -> Unit)? = null
+    value: String
 ){
    Row(
        modifier = Modifier
@@ -90,11 +89,6 @@ fun UserInfoField(
        horizontalArrangement = Arrangement.Start,
        verticalAlignment = Alignment.CenterVertically
    ) {
-       Row(
-           Modifier
-               .fillMaxHeight()
-               .weight(1f)
-       ){
            Text(
                text = prompt,
                color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -105,21 +99,13 @@ fun UserInfoField(
                color = MaterialTheme.colorScheme.onPrimary,
                style = MaterialTheme.typography.titleSmall
            )
-       }
-       if (onClick != null){
-           Icon(
-               imageVector = Icons.Outlined.Edit,
-               contentDescription = "Change",
-               tint = MaterialTheme.colorScheme.onPrimary,
-               modifier = Modifier.clickable { onClick() }
-           )
-       }
+
    }
 }
 
 @Composable
 fun UserWaletAndPlan(){
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     Column(
         modifier = Modifier.background(MaterialTheme.colorScheme.surface)
     ) {
@@ -168,325 +154,90 @@ fun WalletTab(
         }
     }
 
-    // Format card number (no spacing)
-    fun formatCardNumber(input: String): String {
-        return input.filter { it.isDigit() }
-    }
-
     // Format expiry date with slash
     fun formatExpiryDate(input: String): String {
         val digitsOnly = input.filter { it.isDigit() }
-        return if (digitsOnly.length >= 2) {
-            "${digitsOnly.take(2)}/${digitsOnly.drop(2)}"
-        } else {
-            digitsOnly
+
+        return when {
+            digitsOnly.length <= 2 -> digitsOnly
+            else -> "${digitsOnly.take(2)}/${digitsOnly.drop(2)}"
         }
     }
+
+
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-                color = Color(0xFF4A148C)
+                color = MaterialTheme.colorScheme.secondary
             )
-        }
+        } else {
+            BalanceInfo(balance, walletViewModel)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Current Balance: $${String.format("%.2f", balance)}",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color(0xFF4A148C),
-                modifier = Modifier.weight(1f)
-            )
-            
-            IconButton(
-                onClick = {
-                    scope.launch {
-                        walletViewModel.refreshBalance { error ->
-                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-                modifier = Modifier.padding(start = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,  // You might want to use a refresh icon instead
-                    contentDescription = "Refresh Balance",
-                    tint = Color(0xFF4A148C)
+                CardDetails(
+                    cardNumber = cardNumber,
+                    expiryDate = expiryDate,
+                    cvv = cvv,
+                    onCardNumberChange = { cardNumber = it },
+                    onExpiryDateChange = { expiryDate = it },
+                    onCvvChange = { cvv = it },
+                    formatExpiryDate = ::formatExpiryDate
                 )
-            }
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFE0E0E0)
-            )
-        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(bottom = 15.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Card Details",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color(0xFF4A148C)
+            ){
+                TopUpAmountInput(
+                    topUpAmount = topUpAmount,
+                    onAmountChange = { topUpAmount = it }
                 )
 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Card Number",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF4A148C)
-                    )
-                    BasicTextField(
-                        value = cardNumber,
-                        onValueChange = { 
-                            val digitsOnly = it.filter { it.isDigit() }
-                            if (digitsOnly.length <= 16) {
-                                cardNumber = digitsOnly
-                            }
-                        },
-                        textStyle = TextStyle(
-                            color = Color(0xFF4A148C),
-                            fontSize = 18.sp,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        singleLine = true
-                    )
-                    Divider(color = Color(0xFF4A148C), thickness = 1.dp)
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Expiry (MM/YY)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF4A148C)
-                        )
-                        BasicTextField(
-                            value = expiryDate,
-                            onValueChange = { 
-                                val digitsOnly = it.filter { it.isDigit() }
-                                if (digitsOnly.length <= 4) {
-                                    expiryDate = formatExpiryDate(digitsOnly)
-                                }
-                            },
-                            textStyle = TextStyle(
-                                color = Color(0xFF4A148C),
-                                fontSize = 18.sp
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
-                        Divider(color = Color(0xFF4A148C), thickness = 1.dp)
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "CVV",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF4A148C)
-                        )
-                        BasicTextField(
-                            value = cvv,
-                            onValueChange = { if (it.length <= 3) cvv = it },
-                            textStyle = TextStyle(
-                                color = Color(0xFF4A148C),
-                                fontSize = 18.sp
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
-                        Divider(color = Color(0xFF4A148C), thickness = 1.dp)
-                    }
-                }
-            }
-        }
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Top-Up Amount",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF4A148C)
-            )
-            BasicTextField(
-                value = topUpAmount,
-                onValueChange = { topUpAmount = it },
-                textStyle = TextStyle(
-                    color = Color(0xFF4A148C),
-                    fontSize = 18.sp
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
-                    .padding(16.dp)
-            )
-        }
-
-        Button(
-            onClick = {
-                val amount = topUpAmount.toDoubleOrNull()
-                if (amount == null) {
-                    Toast.makeText(context, "Please enter a valid amount", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                val cardDigits = cardNumber.filter { it.isDigit() }
-                if (cardDigits.length != 16) {
-                    Toast.makeText(context, "Please enter a valid card number", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                if (cvv.length != 3) {
-                    Toast.makeText(context, "Please enter a valid CVV", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                val expiryDigits = expiryDate.filter { it.isDigit() }
-                if (expiryDigits.length != 4) {
-                    Toast.makeText(context, "Please enter expiry date in MM/YY format", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                val monthStr = expiryDigits.take(2)
-                val yearStr = expiryDigits.drop(2)
-                val expiryMonth = monthStr.toIntOrNull()
-                val expiryYear = yearStr.toIntOrNull()?.let { 2000 + it }
-
-                if (expiryMonth == null || expiryYear == null || 
-                    expiryMonth < 1 || expiryMonth > 12) {
-                    Toast.makeText(context, "Please enter a valid expiry date", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                scope.launch {
-                    try {
-                        walletViewModel.setLoading(true)
-                        walletViewModel.createPayment(
-                            amount = amount,
-                            onSuccess = { clientSecret ->
-                                // Clear fields on success
+                Button(
+                    onClick = {
+                        walletViewModel.validateAndProcessPayment(
+                            amount = topUpAmount,
+                            cardNumber = cardNumber,
+                            expiryDate = expiryDate,
+                            cvv = cvv,
+                            onSuccess = {
+                                Toast.makeText(context, "Payment successful!", Toast.LENGTH_SHORT).show()
                                 topUpAmount = ""
                                 cardNumber = ""
                                 expiryDate = ""
                                 cvv = ""
-                                Toast.makeText(context, "Payment successful!", Toast.LENGTH_SHORT).show()
-                                walletViewModel.refreshBalance { error ->
-                                    Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                                }
                             },
                             onError = { error ->
-                                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
                             }
                         )
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            "Network error: Please check your connection",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } finally {
-                        walletViewModel.setLoading(false)
-                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Top up",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF4A148C)
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(
-                text = "Top up",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White
-            )
+            }
         }
+
     }
 }
-
-@Composable
-fun BigButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.secondary,
-            contentColor = MaterialTheme.colorScheme.onSecondary
-        )
-    ) {
-        Text(text = text)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun StyledCardField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String,
-    modifier: Modifier = Modifier
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = { Text(placeholder) },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true,
-        colors = TextFieldDefaults.textFieldColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedLabelColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface
-        )
-    )
-}
-
-
 
 
 @Composable
@@ -511,17 +262,17 @@ fun PlanManagementTab(currentPlan: String, onChangePlan: (String) -> Unit) {
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
 
             PlanCard(
                 title = "Lite",
                 price = "€0",
                 details = listOf(
-                    "Basic access to the app",
+                    "Basic trading",
                     "No AI features",
+                    "No portfolio hints",
                     "Limited support"
                 ),
                 isSelected = currentPlan == "Lite",
@@ -533,8 +284,9 @@ fun PlanManagementTab(currentPlan: String, onChangePlan: (String) -> Unit) {
                 title = "Premium",
                 price = "€50",
                 details = listOf(
-                    "Access to all features",
-                    "AI recommendations",
+                    "AI asset analysis",
+                    "AI asset predictions",
+                    "AI portfolio hints",
                     "Priority support"
                 ),
                 isSelected = currentPlan == "Premium",
@@ -563,43 +315,251 @@ fun PlanCard(
         ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = price,
-                style = MaterialTheme.typography.displayMedium,
-            )
-            details.forEach { detail ->
+        Row(){
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .fillMaxHeight()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
                 Text(
-                    text = "- $detail",
-                    style = MaterialTheme.typography.labelMedium,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.fillMaxWidth()
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
                 )
+                Text(
+                    text = price,
+                    style = MaterialTheme.typography.displayLarge,
+                )
+                Button(
+                    onClick = onSelect,
+                    enabled = !isSelected,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                        disabledContainerColor = MaterialTheme.colorScheme.secondary,
+                        disabledContentColor = MaterialTheme.colorScheme.onSecondary
+                    )
+                ) {
+                    Text(
+                        text = if (isSelected) "Selected" else "Choose Plan",
+                    )
+                }
             }
-            Button(
-                onClick = onSelect,
-                enabled = !isSelected,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                    disabledContainerColor = MaterialTheme.colorScheme.secondary,
-                    disabledContentColor = MaterialTheme.colorScheme.onSecondary
-                )
-            ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
+                horizontalAlignment = Alignment.Start
+            ){
                 Text(
-                    text = if (isSelected) "Selected" else "Choose Plan",
+                    text = "Available Features:",
+                    style = MaterialTheme.typography.bodyMedium,
                 )
+                Column (
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ){
+                    details.forEach { detail ->
+                        Text(
+                            text = "- $detail",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         }
     }
 }
+
+
+@Composable
+fun BalanceInfo(
+    balance: Double,
+    walletViewModel: WalletViewModel
+){
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Current Balance: $${String.format("%.2f", balance)}",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.weight(1f)
+        )
+
+        IconButton(
+            onClick = {
+                    walletViewModel.refreshBalance { error ->
+                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                    }
+            },
+            modifier = Modifier.padding(start = 8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "Refresh Balance",
+                tint = MaterialTheme.colorScheme.secondary
+            )
+        }
+    }
+}
+
+@Composable
+fun CardDetails(
+    cardNumber: String,
+    expiryDate: String,
+    cvv: String,
+    onCardNumberChange: (String) -> Unit,
+    onExpiryDateChange: (String) -> Unit,
+    onCvvChange: (String) -> Unit,
+    formatExpiryDate: (String) -> String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Card Details",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.secondary
+            )
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Card Number",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Column{
+                    BasicTextField(
+                        value = cardNumber,
+                        onValueChange = {
+                            val digitsOnly = it.filter { char -> char.isDigit() }
+                            if (digitsOnly.length <= 16) {
+                                onCardNumberChange(digitsOnly)
+                            }
+                        },
+                        textStyle = TextStyle(
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontSize = 18.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        singleLine = true
+                    )
+                    Divider(color = MaterialTheme.colorScheme.primary, thickness = 1.dp)
+                }
+
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Expiry (MM/YY)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    BasicTextField(
+                        value = expiryDate,
+                        onValueChange = {
+                            val digitsOnly = it.filter { char -> char.isDigit() }
+                            if (digitsOnly.length <= 4) {
+                                onExpiryDateChange(formatExpiryDate(digitsOnly))
+                            }
+                        },
+                        textStyle = TextStyle(
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontSize = 18.sp
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    )
+                    Divider(color = MaterialTheme.colorScheme.primary, thickness = 1.dp)
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "CVV",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    BasicTextField(
+                        value = cvv,
+                        onValueChange = { if (it.length <= 3) onCvvChange(it) },
+                        textStyle = TextStyle(
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontSize = 18.sp
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    )
+                    Divider(color = MaterialTheme.colorScheme.primary, thickness = 1.dp)
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun TopUpAmountInput(
+    topUpAmount: String,
+    onAmountChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Top-Up Amount",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.secondary
+        )
+        BasicTextField(
+            value = topUpAmount,
+            onValueChange = onAmountChange,
+            textStyle = TextStyle(
+                color = MaterialTheme.colorScheme.secondary,
+                fontSize = 18.sp
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                .padding(16.dp)
+        )
+    }
+}
+
