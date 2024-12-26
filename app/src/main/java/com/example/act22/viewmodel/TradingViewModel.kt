@@ -14,14 +14,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import retrofit2.Response
 
-sealed class TradingState {
-    object Idle : TradingState()
-    object Loading : TradingState()
-    data class Success(val message: String, val newBalance: Double) : TradingState()
-    data class Error(val message: String) : TradingState()
-}
-
 class TradingViewModel : ViewModel() {
+    sealed class TradingState {
+        object Idle : TradingState()
+        object Loading : TradingState()
+        data class Success(val message: String, val newBalance: Double) : TradingState()
+        data class Error(val message: String) : TradingState()
+    }
+
     private val _tradingState = MutableStateFlow<TradingState>(TradingState.Idle)
     val tradingState: StateFlow<TradingState> = _tradingState
 

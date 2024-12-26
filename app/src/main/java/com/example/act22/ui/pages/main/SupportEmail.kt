@@ -11,20 +11,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.act22.activity.Screen
+import com.example.act22.viewmodel.UserCommunicationViewModel
 
 @Composable
 fun SupportEmail(navController: NavController) {
     MainScaffold(navController) {
-        EmailForm()
+        EmailForm(navController)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EmailForm() {
+fun EmailForm(
+    navController: NavController,
+    userCommunicationViewModel: UserCommunicationViewModel = viewModel()
+) {
     var email by remember { mutableStateOf("") }
     var emailTitle by remember { mutableStateOf("") }
     var emailText by remember { mutableStateOf("") }
+    var isSubmitted by remember { mutableStateOf(false) }
+
+    if (isSubmitted) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Thank you for your for contacting us!",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            BigButton("To main menu") {
+                navController.navigate(Screen.MainPage.route)
+            }
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -105,8 +135,12 @@ fun EmailForm() {
 
         val context = LocalContext.current
         BigButton("Send the form") {
-            //TODO actually send s form
-            Toast.makeText(context, "Your support request was send!", Toast.LENGTH_SHORT).show()
+            userCommunicationViewModel.requestSupport(email, emailTitle, emailText){ result, msg ->
+                if (result)
+                    isSubmitted = true
+                else
+                    Toast.makeText(context, msg,Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

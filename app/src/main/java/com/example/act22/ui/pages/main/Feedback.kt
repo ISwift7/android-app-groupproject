@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.act22.activity.Screen
+import com.example.act22.viewmodel.UserCommunicationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
@@ -31,8 +34,11 @@ fun FeedbackPage(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedBackColumn(navController: NavController) {
-    var selectedRating by remember { mutableStateOf(0) }
+fun FeedBackColumn(
+    navController: NavController,
+    userCommunicationViewModel: UserCommunicationViewModel = viewModel()
+) {
+    var selectedRating by remember { mutableIntStateOf(0) }
     var feedbackText by remember { mutableStateOf("") }
     var isSubmitted by remember { mutableStateOf(false) }
 
@@ -51,9 +57,9 @@ fun FeedBackColumn(navController: NavController) {
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            BigButton("Back") {
-                navController.popBackStack()
+
+            BigButton("To main menu") {
+                navController.navigate(Screen.MainPage.route)
             }
         }
         return
@@ -108,32 +114,12 @@ fun FeedBackColumn(navController: NavController) {
 
         val context = LocalContext.current
         BigButton("Submit feedback") {
-            val auth = FirebaseAuth.getInstance()
-            val userId = auth.currentUser?.uid
-            
-            if (userId == null) {
-                Toast.makeText(context, "Please sign in to submit feedback", Toast.LENGTH_SHORT).show()
-                return@BigButton
-            }
-
-            val db = FirebaseFirestore.getInstance()
-            val review = hashMapOf(
-                "userId" to userId,
-                "rating" to selectedRating,
-                "comment" to feedbackText,
-                "timestamp" to Date()
-            )
-
-            db.collection("androidUsers")
-                .document(userId)
-                .collection("userReviews")
-                .add(review)
-                .addOnSuccessListener {
+            userCommunicationViewModel.leaveFeedback(selectedRating, feedbackText){ result, msg ->
+                if (result)
                     isSubmitted = true
-                }
-                .addOnFailureListener {
-                    Toast.makeText(context, "Failed to submit feedback", Toast.LENGTH_SHORT).show()
-                }
+                else
+                    Toast.makeText(context, msg,Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

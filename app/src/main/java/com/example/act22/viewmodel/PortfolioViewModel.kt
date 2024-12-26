@@ -144,15 +144,6 @@ class PortfolioViewModel(
         return allPortfolioAssets.find { it.ID == assetId }?.quantity ?: 0.0
     }
 
-    suspend fun findAssetByName(name: String): Asset? {
-        return try {
-            val assets = assetRepository.searchAssets(name)
-            assets.firstOrNull()
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     fun getPortfolio(): Portfolio {
         return _portfolioState.value
     }
