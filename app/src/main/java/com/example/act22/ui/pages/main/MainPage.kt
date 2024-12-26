@@ -194,6 +194,18 @@ fun TypeSort(
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         SmallButton(
+            title = "All",
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.3f),
+            color = if (selectedButton.value == "All") MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondary,
+            onClick = {
+                selectedButton.value = "All"
+                onFilterAll()
+            }
+        )
+
+        SmallButton(
             title = "Stocks",
             modifier = Modifier
                 .fillMaxHeight()
@@ -214,18 +226,6 @@ fun TypeSort(
             onClick = {
                 selectedButton.value = "Crypto"
                 onFilterCryptos()
-            }
-        )
-
-        SmallButton(
-            title = "All",
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.3f),
-            color = if (selectedButton.value == "All") MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondary,
-            onClick = {
-                selectedButton.value = "All"
-                onFilterAll()
             }
         )
 
