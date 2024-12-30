@@ -3,6 +3,7 @@ package com.example.act22.ui.pages.main
 import com.example.act22.viewmodel.AIViewModel
 import com.example.act22.data.model.Asset
 import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -239,10 +241,10 @@ fun AssetChart(
     ) {
         when (chartUiState) {
             is AssetPriceViewModel.ChartUiState.Loading -> {
-                StockChartPlaceholder(height = 300.dp)
+                LoadingSpinner()
             }
             is AssetPriceViewModel.ChartUiState.Error -> {
-                StockChartPlaceholder(height = 300.dp)
+                ErrorMessage(chartUiState.message)
             }
             is AssetPriceViewModel.ChartUiState.Success -> {
                 StockChartPlaceholder(
@@ -795,12 +797,11 @@ fun AddPriceAlertDialog(
 ) {
     var enteredPrice by remember { mutableStateOf("") }
     var selectedAlertType by remember { mutableStateOf("above") }
+    var c = LocalContext.current
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        modifier = Modifier
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surface),
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -808,14 +809,19 @@ fun AddPriceAlertDialog(
             ) {
                 Text(
                     "Add Price Alert",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "Current price: $${String.format("%.2f", asset.price)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = "Current Price: $${String.format("%.2f", asset.price)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(5.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                        .padding(5.dp)
                 )
             }
         },
@@ -823,8 +829,8 @@ fun AddPriceAlertDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Alert type selection
                 Column(
@@ -836,7 +842,7 @@ fun AddPriceAlertDialog(
                 ) {
                     Text(
                         "Alert type",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Column(
@@ -853,11 +859,10 @@ fun AddPriceAlertDialog(
                                 .clickable { selectedAlertType = "above" }
                                 .background(
                                     if (selectedAlertType == "above")
-                                        MaterialTheme.colorScheme.primaryContainer
+                                        MaterialTheme.colorScheme.secondary
                                     else
                                         MaterialTheme.colorScheme.surface
-                                )
-                                .padding(12.dp),
+                                ),
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -872,7 +877,7 @@ fun AddPriceAlertDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Above price",
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = if (selectedAlertType == "above")
                                     MaterialTheme.colorScheme.onPrimaryContainer
                                 else
@@ -888,11 +893,10 @@ fun AddPriceAlertDialog(
                                 .clickable { selectedAlertType = "below" }
                                 .background(
                                     if (selectedAlertType == "below")
-                                        MaterialTheme.colorScheme.primaryContainer
+                                        MaterialTheme.colorScheme.secondary
                                     else
                                         MaterialTheme.colorScheme.surface
-                                )
-                                .padding(12.dp),
+                                ),
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -907,7 +911,7 @@ fun AddPriceAlertDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Below price",
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = if (selectedAlertType == "below")
                                     MaterialTheme.colorScheme.onPrimaryContainer
                                 else
@@ -941,42 +945,38 @@ fun AddPriceAlertDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    enteredPrice.toDoubleOrNull()?.let { price ->
-                        onConfirm(price, selectedAlertType)
-                    }
-                },
-                enabled = enteredPrice.toDoubleOrNull() != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Text(
-                    "Add Alert",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Button(
+                    onClick = {
+                        enteredPrice.toDoubleOrNull()?.let { price ->
+                            onConfirm(price, selectedAlertType)
+                        }
+                        Toast.makeText(c,  "Setting your price alert... Please wait..", Toast.LENGTH_LONG ).show()
+                    },
+                    enabled = enteredPrice.toDoubleOrNull() != null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Text("Add Alert")
+                }
+
+
+                Button(
+                    onClick = { onDismiss() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text("Cancel")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    "Cancel",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
+
         }
     )
 }

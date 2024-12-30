@@ -70,8 +70,7 @@ fun CreateMainPage(
         TypeSort(
             onFilterStocks = { viewModel.filterAssetsByType(AssetType.STOCK) },
             onFilterCryptos = { viewModel.filterAssetsByType(AssetType.CRYPTO) },
-            onFilterAll = { viewModel.filterAssetsByType(AssetType.ALL)},
-            onSort = { criteria -> viewModel.sortAssets(criteria) }
+            onFilterAll = { viewModel.filterAssetsByType(AssetType.ALL)}
         )
         when (uiState) {
             is AssetManagerViewModel.UiState.Error -> ErrorMessage((uiState as AssetManagerViewModel.UiState.Error).message)
@@ -177,8 +176,7 @@ fun CompactTextField(
 fun TypeSort(
     onFilterStocks: () -> Unit,
     onFilterCryptos: () -> Unit,
-    onFilterAll: () -> Unit,
-    onSort: (SortingCriteria) -> Unit
+    onFilterAll: () -> Unit
 ) {
     val (expanded, setExpanded) = remember { mutableStateOf(false) }
     val selectedButton = remember { mutableStateOf<String>("All") }
@@ -228,83 +226,7 @@ fun TypeSort(
                 onFilterCryptos()
             }
         )
-
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.1f)
-                .padding(horizontal = 5.dp)
-                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(10.dp))
-                .clickable { setExpanded(true) }
-        ) {
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = "Sort Options",
-                tint = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(5.dp)
-            )
-
-            CustomDropDownMenu(
-                expanded,
-                onDismiss = {
-                    setExpanded(false)
-                    selectedButton.value = "All"
-                },
-                onSort = onSort
-            )
-        }
     }
-}
-
-@Composable
-fun CustomDropDownMenu(
-    expanded: Boolean,
-    onDismiss: () -> Unit,
-    onSort: (SortingCriteria) -> Unit
-) {
-    DropdownMenu(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clip(RoundedCornerShape(10.dp)),
-        offset = DpOffset(0.dp, 5.dp),
-        properties = PopupProperties(focusable = true),
-        expanded = expanded,
-        onDismissRequest = onDismiss
-    ) {
-        CustomDropDownItem("Alphabetical order") {
-            onSort(SortingCriteria.ALPHABET)
-            onDismiss()
-        }
-        CustomDropDownItem("Cheaper first") {
-            onSort(SortingCriteria.ASC)
-            onDismiss()
-        }
-        CustomDropDownItem("Expensive first") {
-            onSort(SortingCriteria.DESC)
-            onDismiss()
-        }
-    }
-}
-
-
-@Composable
-fun CustomDropDownItem(
-    title: String,
-    onClick: () -> Unit
-) {
-    DropdownMenuItem(
-        modifier = Modifier.fillMaxWidth(),
-        text = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        },
-        onClick = onClick
-    )
 }
 
 @Composable

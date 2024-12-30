@@ -74,20 +74,4 @@ class AssetManagerViewModel(
         }
     }
 
-    // Sort assets
-    fun sortAssets(criteria: SortingCriteria) {
-        Log.d("AssetManagerViewModel", "Sorting assets with criteria: $criteria")
-        _uiState.value = UiState.Loading
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val assets = repository.sortAssets(criteria)
-                Log.d("AssetManagerViewModel", "Sorted ${assets.size} assets by: $criteria")
-                _uiState.value = UiState.Success(assets)
-            } catch (e: Exception) {
-                Log.e("AssetManagerViewModel", "Error sorting assets: ${e.message}", e)
-                _uiState.value = UiState.Error("Sorting failed: ${e.message}")
-            }
-        }
-    }
-
 }

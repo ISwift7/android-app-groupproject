@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 
 class AssetPriceViewModel(
     private val repository: AssetRepository = AssetRepositoryTestImp()
@@ -81,16 +83,13 @@ class AssetPriceViewModel(
 
     private suspend fun fetchGraphData(id: String, isCrypto: Boolean) {
         try {
-            // Don't set loading state for updates to avoid flickering
-            if (_chartUiState.value is ChartUiState.Loading) {
-                _chartUiState.value = ChartUiState.Loading
-            }
-            
             // Get Firebase auth token
             val user = FirebaseAuth.getInstance().currentUser
             val token = user?.getIdToken(false)?.await()?.token
                 ?: throw Exception("Not authenticated")
 
+            // Make the API call
+            Log.d("FetchGraphData", "Making API call for graph data...")
             val response = RetrofitInstance.graphApi.getAssetGraph(
                 token = "Bearer $token",
                 symbol = id,

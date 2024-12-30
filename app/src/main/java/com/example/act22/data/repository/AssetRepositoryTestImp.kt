@@ -131,15 +131,6 @@ class AssetRepositoryTestImp : AssetRepository {
         }
     }
 
-    override suspend fun sortAssets(criteria: SortingCriteria): List<Asset> {
-        val assets = getAllAssets()
-        return when (criteria) {
-            SortingCriteria.ASC -> assets.sortedBy { it.price }
-            SortingCriteria.DESC -> assets.sortedByDescending { it.price }
-            SortingCriteria.ALPHABET -> assets.sortedBy { it.name }
-        }
-    }
-
     override suspend fun findAsset(id: String): Asset {
         try {
             // Try stocks first

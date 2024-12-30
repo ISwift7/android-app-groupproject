@@ -39,15 +39,6 @@ interface AssetRepository {
     suspend fun filterAssetsByType(type: AssetType): List<Asset>
 
     /**
-     * Sorts the list of assets based on the given sorting criteria.
-     *
-     * @param criteria The [SortingCriteria] to sort assets by (e.g., price ascending, price descending, alphabetical).
-     * @return A list of [Asset] objects sorted according to the given criteria.
-     * @throws Exception if there is an issue performing the sorting (e.g., invalid criteria or data access error).
-     */
-    suspend fun sortAssets(criteria: SortingCriteria): List<Asset>
-
-    /**
      * Looks for asset with passed ID
      *
      * @param id unique indetifier of Asset

@@ -231,10 +231,6 @@ class AssetRepositoryFirebaseImpl : AssetRepository {
         }
     }
 
-    override suspend fun sortAssets(criteria: SortingCriteria): List<Asset> {
-        TODO("Not yet implemented")
-    }
-
     override suspend fun searchAssets(search: String): List<Asset> {
         try {
             val stocks = stocksCollection
