@@ -94,20 +94,30 @@ class AssetPriceViewModel(
             val response = RetrofitInstance.graphApi.getAssetGraph(
                 token = "Bearer $token",
                 symbol = id,
-                isCrypto = isCrypto
+                type = if (isCrypto) "cryptos" else "stocks"
             )
 
             if (response.isSuccessful) {
-                val graphData = response.body()?.data
-                if (graphData != null) {
-                    _chartUiState.value = ChartUiState.Success(graphData.points)
+                val points = response.body()
+                Log.d("AssetPriceViewModel", "Response successful. Points: $points")
+                if (points != null) {
+                    // Take only the 14 most recent points, reversed to show oldest to newest (left to right)
+                    val recentPoints = points.take(14).reversed()
+                    Log.d("AssetPriceViewModel", "Recent points size: ${recentPoints.size}")
+                    if (recentPoints.isNotEmpty()) {
+                        _chartUiState.value = ChartUiState.Success(recentPoints)
+                    } else {
+                        _chartUiState.value = ChartUiState.Error("No data points available")
+                    }
                 } else {
                     _chartUiState.value = ChartUiState.Error("No graph data available")
                 }
             } else {
-                _chartUiState.value = ChartUiState.Error("Failed to fetch graph data")
+                Log.e("AssetPriceViewModel", "Response not successful: ${response.errorBody()?.string()}")
+                _chartUiState.value = ChartUiState.Error("Failed to fetch graph data: ${response.code()}")
             }
         } catch (e: Exception) {
+            Log.e("AssetPriceViewModel", "Failed to load graph", e)
             _chartUiState.value = ChartUiState.Error("Failed to load graph: ${e.message}")
         }
     }

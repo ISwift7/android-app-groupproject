@@ -42,6 +42,9 @@ import com.example.act22.viewmodel.TradingViewModel
 import com.example.act22.network.GraphDataPoint
 import com.example.act22.viewmodel.PriceAlertViewModel
 import com.example.act22.data.model.PriceAlert
+import com.example.act22.ui.components.DrawChart
+import com.example.act22.ui.components.ChartPoint
+import com.example.act22.ui.components.DrawChartWithTimestamps
 
 @Composable
 fun AssetDetails(
@@ -239,79 +242,37 @@ fun AssetChart(
     ) {
         when (chartUiState) {
             is AssetPriceViewModel.ChartUiState.Loading -> {
-                StockChartPlaceholder(height = 300.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             is AssetPriceViewModel.ChartUiState.Error -> {
-                StockChartPlaceholder(height = 300.dp)
+                Text(
+                    text = "Failed to load chart",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             is AssetPriceViewModel.ChartUiState.Success -> {
-                StockChartPlaceholder(
-                    height = 300.dp,
-                    dataPoints = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DrawChart(
-    pricePoints: List<Double>,
-    lineColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    pointColor: Color = MaterialTheme.colorScheme.onBackground,
-    pointRadius: Float = 6f
-) {
-    val pricePointsFloat = pricePoints.map { it.toFloat() }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            if (pricePointsFloat.isNotEmpty()) {
-                val spacing = canvasWidth / (pricePointsFloat.size - 1)
-
-                val minPrice = pricePointsFloat.minOrNull() ?: 0f
-                val maxPrice = pricePointsFloat.maxOrNull() ?: 0f
-                val priceRange = maxPrice - minPrice
-
-                val path = Path().apply {
-                    pricePointsFloat.forEachIndexed { index, price ->
-                        val x = index * spacing
-                        val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                        if (index == 0) moveTo(x, y) else lineTo(x, y)
-                    }
-                }
-
-                drawPath(
-                    path = path,
-                    color = lineColor,
-                    style = Stroke(width = 5f)
-                )
-
-                pricePointsFloat.forEachIndexed { index, price ->
-                    val x = index * spacing
-                    val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                    drawCircle(
-                        color = pointColor,
-                        radius = pointRadius,
-                        center = Offset(x, y)
+                val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
+                if (points.isEmpty()) {
+                    Text(
+                        text = "No data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                } else {
+                    val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
+                    DrawChartWithTimestamps(
+                        points = chartPoints,
+                        lineColor = MaterialTheme.colorScheme.tertiary,
+                        pointColor = MaterialTheme.colorScheme.secondary,
+                        pointRadius = 4f
                     )
                 }
             }
-        }
-
-        if (pricePoints.isEmpty()) {
-            Text(
-                text = "No data available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
         }
     }
 }
@@ -979,26 +940,4 @@ fun AddPriceAlertDialog(
             }
         }
     )
-}
-
-@Composable
-fun StockChartPlaceholder(
-    height: Dp,
-    dataPoints: List<GraphDataPoint> = emptyList()
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        if (dataPoints.isEmpty()) {
-            CircularProgressIndicator()
-        } else {
-            // Draw the chart with the data points
-            val pricePoints = dataPoints.map { it.price }
-            DrawChart(pricePoints = pricePoints)
-        }
-    }
 }

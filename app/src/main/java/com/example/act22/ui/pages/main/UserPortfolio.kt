@@ -6,12 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
@@ -43,13 +42,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.act22.activity.Screen
+import com.example.act22.data.model.Crypto
 import com.example.act22.viewmodel.PortfolioViewModel
 import com.example.act22.viewmodel.TradingViewModel
+import com.example.act22.viewmodel.AssetPriceViewModel
+import com.example.act22.network.GraphDataPoint
 import kotlinx.coroutines.delay
+import com.example.act22.ui.components.TradingDialog
+import com.example.act22.ui.components.DrawChart
+import com.example.act22.ui.components.ChartPoint
+import com.example.act22.ui.components.DrawChartWithTimestamps
+import androidx.compose.runtime.DisposableEffect
 
 @Composable
 fun UserPortfolio(
@@ -145,27 +153,27 @@ fun PortfolioOverview(
     val techStockCount = portfolio.techStocks.size
     val cryptoCount = portfolio.cryptos.size
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .background(MaterialTheme.colorScheme.primary)
-                .padding(bottom = 25.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
-        ) {
-            Text(
-                text = "Total Value: $${String.format("%.2f", totalPortfolioValue)}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-            Text(
-                text = "Tech Stocks: $techStockCount | Cryptos: $cryptoCount",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-            WalletInformation(walletBalance, navController)
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(bottom = 25.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
+    ) {
+        Text(
+            text = "Total Value: $${String.format("%.2f", totalPortfolioValue)}",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+        Text(
+            text = "Tech Stocks: $techStockCount | Cryptos: $cryptoCount",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+        WalletInformation(walletBalance, navController)
+    }
 }
 
 @Composable
@@ -241,11 +249,28 @@ fun PortfolioAssetCard(
     var showTradingDialog by remember { mutableStateOf(false) }
     var tradingMode by remember { mutableStateOf(true) }
     val tradingViewModel: TradingViewModel = viewModel()
+    val assetPriceViewModel: AssetPriceViewModel = remember { AssetPriceViewModel() }
+    val chartUiState by assetPriceViewModel.chartUiState.collectAsState()
+
+    LaunchedEffect(asset.ID) {
+        assetPriceViewModel.fetchAssetInformation(
+            id = asset.ID,
+            isCrypto = asset is Crypto,
+            shouldUpdateGraph = true
+        )
+    }
+
+    // Cleanup when the composable is disposed
+    DisposableEffect(assetPriceViewModel) {
+        onDispose {
+            assetPriceViewModel.stopGraphUpdates()
+        }
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { navController.navigate(Screen.AssetDetails.createRoute(asset.ID)) },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -253,66 +278,110 @@ fun PortfolioAssetCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
-        StockChartPlaceholder(100.dp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
+        Column {
+            // Chart section
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
-                Button(
-                    onClick = {
-                        showTradingDialog = true
-                        tradingMode = true
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    modifier = Modifier.height(60.dp)
-                ) {
-                    Text("Buy")
-                }
-                Button(
-                    onClick = {
-                        showTradingDialog = true
-                        tradingMode = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    modifier = Modifier.height(60.dp)
-                ) {
-                    Text("Sell")
+                when (chartUiState) {
+                    is AssetPriceViewModel.ChartUiState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.Center),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    is AssetPriceViewModel.ChartUiState.Error -> {
+                        // Empty box for error state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surface)
+                        )
+                    }
+                    is AssetPriceViewModel.ChartUiState.Success -> {
+                        val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
+                        if (points.isEmpty()) {
+                            Text(
+                                text = "No data available",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
+                            DrawChart(
+                                points = chartPoints,
+                                lineColor = MaterialTheme.colorScheme.tertiary,
+                                pointColor = MaterialTheme.colorScheme.secondary,
+                                pointRadius = 2f
+                            )
+                        }
+                    }
                 }
             }
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp)
+
+            // Asset info and buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = asset.name,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "Quantity: ${String.format("%.4f", asset.quantity)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Price: $${String.format("%.2f", asset.price)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Total Value: $${String.format("%.2f", asset.price * asset.quantity)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                // Asset info
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = asset.ID,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Quantity: ${String.format("%.4f", asset.quantity)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Price: $${String.format("%.2f", asset.price)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                // Buy/Sell buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            showTradingDialog = true
+                            tradingMode = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Buy")
+                    }
+                    Button(
+                        onClick = {
+                            showTradingDialog = true
+                            tradingMode = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Sell")
+                    }
+                }
             }
         }
-
     }
 
     if (showTradingDialog) {
@@ -321,6 +390,7 @@ fun PortfolioAssetCard(
             isInPortfolio = true,
             onDismiss = { showTradingDialog = false },
             tradingViewModel = tradingViewModel,
+            portfolioViewModel = viewModel(),
             isBuyingMode = tradingMode
         )
     }
