@@ -12,9 +12,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.Job
 
 class AssetPriceViewModel(
     private val repository: AssetRepository = AssetRepositoryTestImp()
@@ -55,7 +53,7 @@ class AssetPriceViewModel(
             clearChartState()
             currentAssetId = id
             currentIsCrypto = isCrypto
-
+            
             // Immediately fetch both asset and graph data in parallel
             viewModelScope.launch {
                 supervisorScope {
@@ -80,7 +78,7 @@ class AssetPriceViewModel(
             clearChartState()
             currentAssetId = id
             currentIsCrypto = isCrypto
-
+            
             // Immediate fetch for new asset
             viewModelScope.launch {
                 fetchGraphData(id, isCrypto)
@@ -122,7 +120,7 @@ class AssetPriceViewModel(
         if (System.currentTimeMillis() - lastFetchTime < minFetchInterval) {
             return
         }
-
+        
         try {
             withContext(Dispatchers.IO) {
                 val user = FirebaseAuth.getInstance().currentUser

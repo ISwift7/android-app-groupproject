@@ -47,20 +47,20 @@ fun MainAssetCard(
                 )
                 Text(
                     text = "Price: $${String.format("%.2f", asset.price)}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (asset is TechStock) {
                     Text(
                         text = "Sector: ${asset.sector}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 if (asset is Crypto) {
                     Text(
                         text = "Blockchain: ${asset.blockchain}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

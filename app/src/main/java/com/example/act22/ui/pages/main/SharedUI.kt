@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.act22.R
 import kotlin.random.Random
+import androidx.compose.material3.CircularProgressIndicator
 
 @Composable
 fun AssetImage(asset: Asset) {
@@ -177,74 +178,10 @@ fun StockChartPlaceholder(
             .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        StockChart()
-    }
-}
-@Composable
-fun StockChart(
-    lineColor: Color = MaterialTheme.colorScheme.tertiary,
-    pointColor: Color = MaterialTheme.colorScheme.secondary,
-    pointRadius: Float = 6f,
-    numberOfPoints: Int = 25
-) {
-    val stockPrices = remember { generateRandomStockPrices(numberOfPoints) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            if (stockPrices.isNotEmpty()) {
-                // Calculate the spacing between points
-                val spacing = canvasWidth / (stockPrices.size - 1)
-
-                // Find the min and max values to scale the graph
-                val minPrice = stockPrices.minOrNull() ?: 0f
-                val maxPrice = stockPrices.maxOrNull() ?: 0f
-                val priceRange = maxPrice - minPrice
-
-                // Create a path for the line
-                val path = Path().apply {
-                    stockPrices.forEachIndexed { index, price ->
-                        val x = index * spacing
-                        val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                        if (index == 0) moveTo(x, y) else lineTo(x, y)
-                    }
-                }
-
-                // Draw the line
-                drawPath(
-                    path = path,
-                    color = lineColor,
-                    style = Stroke(width = 4f)
-                )
-
-                // Draw points
-                stockPrices.forEachIndexed { index, price ->
-                    val x = index * spacing
-                    val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                    drawCircle(
-                        color = pointColor,
-                        radius = pointRadius,
-                        center = Offset(x, y)
-                    )
-                }
-            }
-        }
-
-        // Placeholder text if no data
-        if (stockPrices.isEmpty()) {
-            Text(
-                text = "No data available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            strokeWidth = 2.dp
+        )
     }
 }
 
@@ -265,10 +202,6 @@ fun VerticalTabItem(label: String, onClick: () -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
-}
-
-fun generateRandomStockPrices(size: Int): List<Float> {
-    return List(size) { Random.nextFloat() * 1000f }
 }
 
 @Composable

@@ -9,7 +9,7 @@ import com.example.act22.data.repository.AssetRepositoryTestImp
 import com.example.act22.network.GraphDataPoint
 import com.example.act22.network.RetrofitInstance
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -39,63 +39,23 @@ class AssetPriceViewModel(
     val chartUiState: StateFlow<ChartUiState> = _chartUiState
 
     private var graphUpdateJob: Job? = null
-    private var currentAssetId: String? = null
-    private var currentIsCrypto: Boolean = false
-    private var lastFetchTime: Long = 0
-    private val minFetchInterval = 2000 // Minimum 2 seconds between fetches
-
-    fun clearChartState() {
-        _chartUiState.value = ChartUiState.Loading
-        currentAssetId = null
-        lastFetchTime = 0
-    }
 
     fun fetchAssetInformation(id: String, isCrypto: Boolean, shouldUpdateGraph: Boolean = true) {
-        if (id != currentAssetId) {
-            clearChartState()
-            currentAssetId = id
-            currentIsCrypto = isCrypto
-
-            // Immediately fetch both asset and graph data in parallel
-            viewModelScope.launch {
-                supervisorScope {
-                    launch { fetchAsset(id) }
-                    if (shouldUpdateGraph) {
-                        launch { fetchGraphData(id, isCrypto) }
-                    }
-                }
-            }
-        } else {
-            viewModelScope.launch {
-                fetchAsset(id)
-                if (shouldUpdateGraph) {
-                    fetchGraphData(id, isCrypto)
-                }
+        viewModelScope.launch {
+            fetchAsset(id)
+            if (shouldUpdateGraph) {
+                fetchGraphData(id, isCrypto)
             }
         }
     }
 
     fun startGraphUpdates(id: String, isCrypto: Boolean) {
-        if (id != currentAssetId) {
-            clearChartState()
-            currentAssetId = id
-            currentIsCrypto = isCrypto
-
-            // Immediate fetch for new asset
-            viewModelScope.launch {
-                fetchGraphData(id, isCrypto)
-            }
-        }
-
         stopGraphUpdates()
 
         graphUpdateJob = viewModelScope.launch {
-            while (isActive) {
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastFetchTime >= minFetchInterval) {
-                    fetchGraphData(id, isCrypto)
-                }
-                delay(3000) // Check every 3 seconds
+            while (true) {
+                fetchGraphData(id, isCrypto)
+                delay(10000) // Update every 10 seconds instead of 5 minutes for more responsive updates
             }
         }
     }
@@ -107,6 +67,7 @@ class AssetPriceViewModel(
 
     private suspend fun fetchAsset(id: String) {
         try {
+            _assetUiState.value = AssetUiState.Loading
             val asset = repository.findAsset(id)
             if (asset.price <= 0) {
                 _assetUiState.value = AssetUiState.Error("Could not get current price")
@@ -119,48 +80,62 @@ class AssetPriceViewModel(
     }
 
     private suspend fun fetchGraphData(id: String, isCrypto: Boolean) {
-        if (System.currentTimeMillis() - lastFetchTime < minFetchInterval) {
-            return
-        }
-
         try {
-            withContext(Dispatchers.IO) {
-                val user = FirebaseAuth.getInstance().currentUser
-                val token = user?.getIdToken(false)?.await()?.token
-                    ?: throw Exception("Not authenticated")
+            // Don't set loading state for updates to avoid flickering
+            if (_chartUiState.value is ChartUiState.Loading) {
+                _chartUiState.value = ChartUiState.Loading
+            }
+            
+            // Get Firebase auth token
+            val user = FirebaseAuth.getInstance().currentUser
+            val token = user?.getIdToken(false)?.await()?.token
+                ?: throw Exception("Not authenticated")
 
-                val response = RetrofitInstance.graphApi.getAssetGraph(
-                    token = "Bearer $token",
-                    symbol = id,
-                    type = if (isCrypto) "cryptos" else "stocks"
-                )
+            val response = RetrofitInstance.graphApi.getAssetGraph(
+                token = "Bearer $token",
+                symbol = id,
+                type = if (isCrypto) "cryptos" else "stocks"
+            )
 
-                if (response.isSuccessful) {
-                    val points = response.body()
-                    if (points != null) {
-                        val recentPoints = points.take(14).reversed()
-                        if (recentPoints.isNotEmpty()) {
-                            _chartUiState.value = ChartUiState.Success(recentPoints)
-                            lastFetchTime = System.currentTimeMillis()
-                        } else {
+            if (response.isSuccessful) {
+                val points = response.body()
+                Log.d("AssetPriceViewModel", "Response successful. Points: $points")
+                if (points != null) {
+                    // Take only the 14 most recent points, reversed to show oldest to newest (left to right)
+                    val recentPoints = points.take(14).reversed()
+                    Log.d("AssetPriceViewModel", "Recent points size: ${recentPoints.size}")
+                    if (recentPoints.isNotEmpty()) {
+                        _chartUiState.value = ChartUiState.Success(recentPoints)
+                    } else {
+                        // Keep previous state or loading instead of showing error
+                        if (_chartUiState.value !is ChartUiState.Success) {
                             _chartUiState.value = ChartUiState.Loading
                         }
-                    } else {
-                        _chartUiState.value = ChartUiState.Loading
                     }
                 } else {
+                    // Keep previous state or loading instead of showing error
+                    if (_chartUiState.value !is ChartUiState.Success) {
+                        _chartUiState.value = ChartUiState.Loading
+                    }
+                }
+            } else {
+                Log.e("AssetPriceViewModel", "Response not successful: ${response.errorBody()?.string()}")
+                // Keep previous state or loading instead of showing error
+                if (_chartUiState.value !is ChartUiState.Success) {
                     _chartUiState.value = ChartUiState.Loading
                 }
             }
         } catch (e: Exception) {
             Log.e("AssetPriceViewModel", "Failed to load graph", e)
-            _chartUiState.value = ChartUiState.Loading
+            // Keep previous state or loading instead of showing error
+            if (_chartUiState.value !is ChartUiState.Success) {
+                _chartUiState.value = ChartUiState.Loading
+            }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
         stopGraphUpdates()
-        clearChartState()
     }
 }
