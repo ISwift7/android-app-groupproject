@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.act22.activity.MainActivity
 import com.example.act22.activity.Screen
 import com.example.act22.viewmodel.AuthenticationViewModel
 import com.radusalagean.infobarcompose.InfoBar
@@ -21,14 +22,16 @@ import com.radusalagean.infobarcompose.InfoBarMessage
 @Composable
 fun SignUpPage(
     navController: NavController,
-    authenticationViewModel: AuthenticationViewModel
+    authenticationViewModel: AuthenticationViewModel,
+    activity: MainActivity
 ) {
     AuthPage(
         logoHeight = 100.dp,
         content = {
             SignUpColumn(
                 navController,
-                authenticationViewModel
+                authenticationViewModel,
+                activity
             )
         }
     )
@@ -37,7 +40,8 @@ fun SignUpPage(
 @Composable
 fun SignUpColumn(
     navController: NavController,
-    authenticationViewModel: AuthenticationViewModel
+    authenticationViewModel: AuthenticationViewModel,
+    activity: MainActivity
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -66,7 +70,7 @@ fun SignUpColumn(
 
     OrDevider()
 
-    AuthGoogleButton("Sign up", {})
+    AuthGoogleButton("Sign up") { activity.launchGoogleSignIn() }
 }
 
 

@@ -49,6 +49,7 @@ import androidx.navigation.NavController
 import com.example.act22.activity.Screen
 import com.example.act22.viewmodel.PortfolioViewModel
 import com.example.act22.viewmodel.TradingViewModel
+import com.example.act22.viewmodel.UserPlanViewModel
 import kotlinx.coroutines.delay
 
 @Composable
@@ -90,31 +91,36 @@ fun UserPortfolio(
 @Composable
 fun PortfolioTabs(
     navController: NavController,
-    portfolioViewModel: PortfolioViewModel
+    portfolioViewModel: PortfolioViewModel,
+    userPlanViewModel: UserPlanViewModel = viewModel()
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        TabRow(selectedTabIndex = selectedTab) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("My assets") }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("AI Tips") }
-            )
-        }
+    val isPremium by userPlanViewModel.userPlan.collectAsState()
+
+        var selectedTab by remember { mutableIntStateOf(0) }
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("My assets") }
+                )
+                if(isPremium){
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("AI Tips") }
+                    )
+                }
+            }
 
             when (selectedTab) {
                 0 -> PortfolioAssets(navController, portfolioViewModel)
                 1 -> AITab()
             }
 
-    }
+        }
 }
 
 
@@ -132,10 +138,10 @@ fun PortfolioOverview(
         portfolioViewModel.refreshPortfolio()
     }
     
-    // Set up periodic updates (every 30 seconds)
+    // Set up periodic updates (every 60 seconds)
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30000)
+            delay(60000)
             portfolioViewModel.refreshPortfolio()
         }
     }
@@ -145,7 +151,7 @@ fun PortfolioOverview(
     val techStockCount = portfolio.techStocks.size
     val cryptoCount = portfolio.cryptos.size
 
-        Column(
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)

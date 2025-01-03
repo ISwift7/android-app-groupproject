@@ -19,7 +19,7 @@ import androidx.navigation.NavController
 import com.example.act22.activity.Screen
 
 enum class SettingsTab {
-    SUPPORT, FEEDBACK, SETTINGS
+    SUPPORT, FEEDBACK
 }
 
 @Composable
@@ -34,8 +34,7 @@ fun Options(
 fun OptionsTabs(navController: NavController) {
     val tabs = listOf(
         SettingsTab.SUPPORT to Screen.Support.route,
-        SettingsTab.FEEDBACK to Screen.Feedback.route,
-        SettingsTab.SETTINGS to Screen.Settings.route
+        SettingsTab.FEEDBACK to Screen.Feedback.route
     )
 
     Column(

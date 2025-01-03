@@ -38,12 +38,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.round
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.act22.activity.Screen
-import com.example.act22.ui.components.TradingDialog
 import com.example.act22.viewmodel.TradingViewModel
 import com.example.act22.network.GraphDataPoint
 import com.example.act22.viewmodel.PriceAlertViewModel
 import com.example.act22.data.model.PriceAlert
+import com.example.act22.viewmodel.UserPlanViewModel
 
 @Composable
 fun AssetDetails(
@@ -104,8 +103,10 @@ fun AssetDetailsColumn(
     aiViewModel: AIViewModel,
     asset: Asset,
     chartUiState: AssetPriceViewModel.ChartUiState,
-    navController: NavController
+    navController: NavController,
+    userPlanViewModel: UserPlanViewModel = viewModel(),
 ) {
+    val isPremium by userPlanViewModel.userPlan.collectAsState()
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -118,8 +119,9 @@ fun AssetDetailsColumn(
             AssetDetailsTabs(
                 aiViewModel,
                 asset,
-                true
-            ) //todo dynamic
+                isPremium
+            )
+
         }
 
         AssetHeader(asset, Modifier.align(Alignment.TopCenter))
@@ -244,7 +246,7 @@ fun AssetChart(
                 LoadingSpinner()
             }
             is AssetPriceViewModel.ChartUiState.Error -> {
-                ErrorMessage(chartUiState.message)
+                ErrorMessage((chartUiState as AssetPriceViewModel.ChartUiState.Error).message)
             }
             is AssetPriceViewModel.ChartUiState.Success -> {
                 StockChartPlaceholder(
@@ -252,68 +254,6 @@ fun AssetChart(
                     dataPoints = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun DrawChart(
-    pricePoints: List<Double>,
-    lineColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    pointColor: Color = MaterialTheme.colorScheme.onBackground,
-    pointRadius: Float = 6f
-) {
-    val pricePointsFloat = pricePoints.map { it.toFloat() }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            if (pricePointsFloat.isNotEmpty()) {
-                val spacing = canvasWidth / (pricePointsFloat.size - 1)
-
-                val minPrice = pricePointsFloat.minOrNull() ?: 0f
-                val maxPrice = pricePointsFloat.maxOrNull() ?: 0f
-                val priceRange = maxPrice - minPrice
-
-                val path = Path().apply {
-                    pricePointsFloat.forEachIndexed { index, price ->
-                        val x = index * spacing
-                        val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                        if (index == 0) moveTo(x, y) else lineTo(x, y)
-                    }
-                }
-
-                drawPath(
-                    path = path,
-                    color = lineColor,
-                    style = Stroke(width = 5f)
-                )
-
-                pricePointsFloat.forEachIndexed { index, price ->
-                    val x = index * spacing
-                    val y = canvasHeight - ((price - minPrice) / priceRange * canvasHeight)
-                    drawCircle(
-                        color = pointColor,
-                        radius = pointRadius,
-                        center = Offset(x, y)
-                    )
-                }
-            }
-        }
-
-        if (pricePoints.isEmpty()) {
-            Text(
-                text = "No data available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
         }
     }
 }
@@ -328,7 +268,7 @@ fun AssetDetailsTabs(
     val tabs = if (isPremiumUser) {
         listOf("Details & Analytics", "AI Predictions", "Price alerts")
     } else {
-        listOf("Details")
+        listOf("Details", "Price alerts")
     }
 
     Column {
@@ -354,6 +294,7 @@ fun AssetDetailsTabs(
         }
 
         when (tabs[selectedTabIndex]) {
+            "Details" -> AssetBasicDetails(asset)
             "Details & Analytics" -> AssetAnalyticsTabs(aiViewModel, asset)
             "AI Predictions" -> AssetPredictions(aiViewModel, asset)
             "Price alerts" -> AssetPriceAlerts(asset = asset, viewModel = viewModel())

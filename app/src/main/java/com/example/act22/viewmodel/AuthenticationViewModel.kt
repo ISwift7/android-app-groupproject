@@ -1,14 +1,21 @@
 package com.example.act22.viewmodel
 
+import android.app.Activity
 import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.act22.R
 import com.example.act22.service.BackendService
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 
 class AuthenticationViewModel : ViewModel() {
@@ -163,5 +170,52 @@ class AuthenticationViewModel : ViewModel() {
 
     fun checkIfUserIsLoggedIn(): Boolean {
         return auth.currentUser != null
+    }
+
+    fun getGoogleSignInClient(activity: Activity): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(activity.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        return GoogleSignIn.getClient(activity, gso)
+    }
+
+    fun handleGoogleAuthentication(
+        idToken: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+
+        auth.signInWithCredential(credential).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+                user?.let { firebaseUser ->
+                    val isNewUser = task.result?.additionalUserInfo?.isNewUser == true // Check if the user is new
+                    val email = firebaseUser.email ?: "No Email"
+
+                    if (isNewUser) {
+                        // If the user is new, register them in the backend
+                        viewModelScope.launch {
+                            try {
+                                backendService.createUser(email, idToken).onSuccess {
+                                    onResult(true, "Registration successful!")
+                                }.onFailure { backendError ->
+                                    onResult(false, "Failed to register user in backend: ${backendError.message}")
+                                }
+                            } catch (e: Exception) {
+                                println(e)
+                                onResult(false, "Failed to register user: ${e.message}")
+                            }
+                        }
+                    } else {
+                        // If the user is existing, sign them in
+                        onResult(true, "Sign-in successful!")
+                    }
+                } ?: onResult(false, "Google sign-in failed. Please try again.")
+            } else {
+                val errorMessage = task.exception?.message ?: "Unknown error occurred."
+                onResult(false, errorMessage)
+            }
+        }
     }
 }

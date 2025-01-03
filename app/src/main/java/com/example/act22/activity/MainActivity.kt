@@ -28,7 +28,7 @@ import com.example.act22.ui.pages.main.AssetDetails
 import com.example.act22.ui.pages.main.FeedbackPage
 import com.example.act22.ui.pages.main.Options
 import com.example.act22.ui.pages.main.PortfolioBuildingPage
-import com.example.act22.ui.pages.main.SettingsPage
+
 import com.example.act22.ui.pages.main.SupportEmail
 import com.example.act22.ui.pages.main.SupportPage
 import com.example.act22.ui.pages.main.UserPortfolio
@@ -44,6 +44,12 @@ import androidx.lifecycle.ViewModel
 import com.example.act22.data.repository.AssetRepositoryFirebaseImpl
 import com.example.act22.payment.PaymentSheetManager
 import android.util.Log
+import androidx.navigation.NavController
+import com.example.act22.R
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 sealed class Screen(val route: String) {
     object StartPage : Screen("Start_Page")
@@ -55,7 +61,6 @@ sealed class Screen(val route: String) {
     object PasswordRecovery : Screen("Recovery")
     object RegistrationSuccess : Screen("RegistrationSuccess")
     object Profile : Screen("Profile")
-    object Settings : Screen("Settings")
     object Support : Screen("Support")
     object SupportEmail : Screen("Support_Email")
     object Feedback : Screen("Feedback")
@@ -73,7 +78,8 @@ class MainActivity : ComponentActivity() {
 
     private val authViewModel: AuthenticationViewModel by viewModels()
     private val portfolioViewModel: PortfolioViewModel by viewModels()
-    private val assetManagerViewModel: AssetManagerViewModel by viewModels {
+    private val aiViewModel: AIViewModel by viewModels()
+    private val assetManagerViewModel by viewModels<AssetManagerViewModel> {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -91,8 +97,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private val aiViewModel: AIViewModel by viewModels()
+    private var navController: NavController? = null
     private lateinit var paymentSheetManager: PaymentSheetManager
+    private lateinit var googleSignInClient: GoogleSignInClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,7 +109,7 @@ class MainActivity : ComponentActivity() {
         }
 
         try {
-            // Initialize Stripe PaymentConfiguration
+
             com.stripe.android.PaymentConfiguration.init(
                 applicationContext,
                 "pk_test_51OPwQhHuhy8PxLxbxmOKHZGnpUNgFXMJBKxGyHXgKhEbwwKxEPtUAh8Ry8PoQDqyXHtxNvHI8iZQEtWLYhLvlHSq00yPrEPwbf"
@@ -112,7 +119,6 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Failed to initialize Stripe PaymentConfiguration: ${e.message}")
         }
 
-        // Check Google Play Services
         val availability = GoogleApiAvailability.getInstance()
         val resultCode = availability.isGooglePlayServicesAvailable(this)
         if (resultCode != com.google.android.gms.common.ConnectionResult.SUCCESS) {
@@ -124,7 +130,11 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
-
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(this.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
         val startScreen = if (authViewModel.checkIfUserIsLoggedIn()){ Screen.MainPage.route } else { Screen.StartPage.route }
 
         enableEdgeToEdge()
@@ -140,36 +150,74 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalPaymentSheetManager provides paymentSheetManager) {
                     NavigationSetUp(
                         startScreen,
+                        onNavControllerAvailable = { controller ->
+                            navController = controller
+                        },
                         authViewModel,
                         portfolioViewModel,
                         assetManagerViewModel,
                         assetPriceViewModel,
-                        aiViewModel
+                        aiViewModel,
+                        this
                     )
                 }
             }
         }
     }
 
+    fun launchGoogleSignIn() {
+        val signInIntent = googleSignInClient.signInIntent
+        startActivityForResult(signInIntent, GOOGLE_SIGN_IN_REQUEST_CODE)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
         if (requestCode == 9000) {
-            // Retry initialization after user action
             recreate()
+            return
         }
+
+        if (requestCode == GOOGLE_SIGN_IN_REQUEST_CODE) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account?.idToken
+
+                if (idToken != null) {
+                    authViewModel.handleGoogleAuthentication(idToken) { success, message ->
+                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                        if (success) {
+                            navController?.navigate(Screen.MainPage.route)
+                        }
+                    }
+                } else {
+                    Toast.makeText(this, "Failed to retrieve ID token.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: ApiException) {
+                Toast.makeText(this, "Google sign-in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    companion object {
+        private const val GOOGLE_SIGN_IN_REQUEST_CODE = 1001
     }
 }
 
 @Composable
 fun NavigationSetUp(
     startScreen : String,
+    onNavControllerAvailable: (NavController) -> Unit,
     authenticationViewModel: AuthenticationViewModel,
     portfolioViewModel: PortfolioViewModel,
     assetManagerViewModel: AssetManagerViewModel,
     assetPriceViewModel: AssetPriceViewModel,
-    aiViewModel: AIViewModel
+    aiViewModel: AIViewModel,
+    mainActivity: MainActivity
 ){
     val navController = rememberNavController()
+    onNavControllerAvailable(navController)
     NavHost(navController = navController, startDestination = startScreen, builder = {
         composable(Screen.StartPage.route){
             LandingPage(
@@ -180,13 +228,15 @@ fun NavigationSetUp(
         composable(Screen.SignInPage.route) {
             SignInPage(
                 navController,
-                authenticationViewModel
+                authenticationViewModel,
+                mainActivity
             )
         }
         composable(Screen.SignUpPage.route) {
             SignUpPage(
                 navController,
-                authenticationViewModel
+                authenticationViewModel,
+                mainActivity
             )
         }
         composable(Screen.PasswordRecovery.route) {
@@ -234,10 +284,6 @@ fun NavigationSetUp(
         composable(Screen.Feedback.route) {
             FeedbackPage(navController)
         }
-        composable(Screen.Settings.route) {
-            SettingsPage(navController)
-        }
-
         composable(
             Screen.AssetDetails.route,
             arguments = listOf(navArgument("ID") { type = NavType.StringType })

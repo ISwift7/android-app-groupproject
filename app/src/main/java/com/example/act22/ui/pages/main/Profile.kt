@@ -35,6 +35,7 @@ import androidx.compose.material.Divider
 import androidx.compose.material.icons.filled.Refresh
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.LaunchedEffect
+import com.example.act22.viewmodel.UserPlanViewModel
 
 @Composable
 fun UserProfile(
@@ -241,7 +242,22 @@ fun WalletTab(
 
 
 @Composable
-fun PlanManagementTab(currentPlan: String, onChangePlan: (String) -> Unit) {
+fun PlanManagementTab(
+    currentPlan: String,
+    onChangePlan: (String) -> Unit,
+    userPlanViewModel: UserPlanViewModel = viewModel()
+) {
+    val isPremium by userPlanViewModel.userPlan.collectAsState()
+    val msg by userPlanViewModel.errorMessage.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(msg) {
+        if (msg != null){
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            userPlanViewModel.clearErrorMessage()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -275,8 +291,9 @@ fun PlanManagementTab(currentPlan: String, onChangePlan: (String) -> Unit) {
                     "No portfolio hints",
                     "Limited support"
                 ),
-                isSelected = currentPlan == "Lite",
-                onSelect = { onChangePlan("Lite") },
+                isSelected = !isPremium,
+                onSelect = {
+                    userPlanViewModel.changeUserPlan(newPlan = "Lite") },
                 modifier = Modifier.weight(1f).padding(8.dp)
             )
 
@@ -289,8 +306,9 @@ fun PlanManagementTab(currentPlan: String, onChangePlan: (String) -> Unit) {
                     "AI portfolio hints",
                     "Priority support"
                 ),
-                isSelected = currentPlan == "Premium",
-                onSelect = { onChangePlan("Premium") },
+                isSelected = isPremium,
+                onSelect = {
+                    userPlanViewModel.changeUserPlan(newPlan = "Premium") },
                 modifier = Modifier.weight(1f).padding(8.dp)
             )
         }
