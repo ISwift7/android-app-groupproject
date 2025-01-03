@@ -27,7 +27,7 @@ import com.example.act22.data.model.Crypto
 import com.example.act22.data.model.PriceAlert
 import com.example.act22.data.model.TechStock
 import com.example.act22.ui.components.ChartPoint
-import com.example.act22.ui.components.DrawChart
+import com.example.act22.ui.components.DrawChartWithTimestamps
 import com.example.act22.viewmodel.AIViewModel
 import com.example.act22.viewmodel.AssetPriceViewModel
 import com.example.act22.viewmodel.PortfolioViewModel
@@ -48,12 +48,12 @@ fun AssetDetails(
     val assetUiState by assetPriceViewModel.assetUiState.collectAsState()
     val chartUiState by assetPriceViewModel.chartUiState.collectAsState()
 
-    // Initial fetch of asset info and start graph updates immediately
+    // Initial fetch of asset info
     LaunchedEffect(assetId) {
         assetPriceViewModel.fetchAssetInformation(
             id = assetId,
             isCrypto = false,
-            shouldUpdateGraph = true
+            shouldUpdateGraph = false
         )
     }
 
@@ -238,20 +238,25 @@ fun AssetChart(
                 )
             }
             is AssetPriceViewModel.ChartUiState.Error -> {
-                // Show loading instead of error message
-                CircularProgressIndicator(
+                Text(
+                    text = "Failed to load chart",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
             is AssetPriceViewModel.ChartUiState.Success -> {
                 val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
                 if (points.isEmpty()) {
-                    CircularProgressIndicator(
+                    Text(
+                        text = "No data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
                     val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
-                    DrawChart(
+                    DrawChartWithTimestamps(
                         points = chartPoints,
                         lineColor = MaterialTheme.colorScheme.tertiary,
                         pointColor = MaterialTheme.colorScheme.secondary,

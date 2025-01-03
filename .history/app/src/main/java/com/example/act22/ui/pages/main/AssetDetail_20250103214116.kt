@@ -48,8 +48,8 @@ fun AssetDetails(
     val assetUiState by assetPriceViewModel.assetUiState.collectAsState()
     val chartUiState by assetPriceViewModel.chartUiState.collectAsState()
 
-    // Initial fetch of asset info and start graph updates immediately
-    LaunchedEffect(assetId) {
+    // Immediately fetch both asset and graph data
+    LaunchedEffect(Unit) {
         assetPriceViewModel.fetchAssetInformation(
             id = assetId,
             isCrypto = false,
@@ -57,7 +57,7 @@ fun AssetDetails(
         )
     }
 
-    // Update isCrypto and start graph updates when we get the asset info
+    // Start graph updates as soon as we know the asset type
     LaunchedEffect(assetUiState) {
         if (assetUiState is AssetPriceViewModel.AssetUiState.Success) {
             val asset = (assetUiState as AssetPriceViewModel.AssetUiState.Success).asset
@@ -65,7 +65,6 @@ fun AssetDetails(
         }
     }
 
-    // Clean up graph updates when leaving the screen
     DisposableEffect(assetId) {
         onDispose {
             assetPriceViewModel.stopGraphUpdates()
@@ -229,25 +228,34 @@ fun AssetChart(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp)
+            .height(200.dp)
+            .padding(horizontal = 8.dp)
     ) {
         when (chartUiState) {
             is AssetPriceViewModel.ChartUiState.Loading -> {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.Center),
+                    strokeWidth = 2.dp
                 )
             }
             is AssetPriceViewModel.ChartUiState.Error -> {
-                // Show loading instead of error message
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.Center),
+                    strokeWidth = 2.dp
                 )
             }
             is AssetPriceViewModel.ChartUiState.Success -> {
                 val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
                 if (points.isEmpty()) {
                     CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .align(Alignment.Center),
+                        strokeWidth = 2.dp
                     )
                 } else {
                     val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
@@ -255,7 +263,7 @@ fun AssetChart(
                         points = chartPoints,
                         lineColor = MaterialTheme.colorScheme.tertiary,
                         pointColor = MaterialTheme.colorScheme.secondary,
-                        pointRadius = 4f
+                        pointRadius = 3f
                     )
                 }
             }

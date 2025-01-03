@@ -27,7 +27,7 @@ import com.example.act22.data.model.Crypto
 import com.example.act22.data.model.PriceAlert
 import com.example.act22.data.model.TechStock
 import com.example.act22.ui.components.ChartPoint
-import com.example.act22.ui.components.DrawChart
+import com.example.act22.ui.components.DrawChartWithTimestamps
 import com.example.act22.viewmodel.AIViewModel
 import com.example.act22.viewmodel.AssetPriceViewModel
 import com.example.act22.viewmodel.PortfolioViewModel
@@ -251,7 +251,7 @@ fun AssetChart(
                     )
                 } else {
                     val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
-                    DrawChart(
+                    DrawChartWithTimestamps(
                         points = chartPoints,
                         lineColor = MaterialTheme.colorScheme.tertiary,
                         pointColor = MaterialTheme.colorScheme.secondary,
