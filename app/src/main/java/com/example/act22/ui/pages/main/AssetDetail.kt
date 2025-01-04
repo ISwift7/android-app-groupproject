@@ -357,16 +357,18 @@ fun AssetBasicDetails(
         Alignment.Center
     ) {
         Card(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.fillMaxHeight().padding(10.dp),
             elevation = CardDefaults.elevatedCardElevation(2.dp),
             colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
         ) {
             Column(
                 modifier = Modifier
                     .wrapContentWidth()
+                    .fillMaxHeight()
                     .defaultMinSize(minWidth = 170.dp)
                     .padding(15.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {
                 AssetImage(asset)
                 AssetBasicDetailsText("Name : ${asset.name}")
@@ -395,8 +397,8 @@ fun AssetBasicDetailsText(
 ) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-        modifier = Modifier.padding(5.dp),
+        style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.None),
+        modifier = Modifier.padding(2.dp),
         color = MaterialTheme.colorScheme.onSurface
     )
 }

@@ -21,8 +21,6 @@ class PortfolioViewModel(
 ) : ViewModel() {
     private val portfolio: Portfolio = initialPortfolio
     private val allPortfolioAssets = mutableSetOf<Asset>()
-    private val firestoreAssetRepository = FirestoreAssetRepository()
-    private val assetRepository = AssetRepositoryFirebaseImpl()
     
     private val _portfolioState = MutableStateFlow<Portfolio>(portfolio)
     val portfolioState: StateFlow<Portfolio> = _portfolioState
@@ -31,10 +29,7 @@ class PortfolioViewModel(
     val walletBalance: StateFlow<Double> = _walletBalance
 
     private val _cryptoList = MutableStateFlow<List<Crypto>>(emptyList())
-    val cryptoList: StateFlow<List<Crypto>> = _cryptoList
-
     private val _stockList = MutableStateFlow<List<TechStock>>(emptyList())
-    val stockList: StateFlow<List<TechStock>> = _stockList
 
     init {
         refreshPortfolio()

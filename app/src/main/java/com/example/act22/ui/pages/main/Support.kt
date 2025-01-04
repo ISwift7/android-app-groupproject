@@ -55,12 +55,6 @@ fun SupportTabs(navController: NavController){
                 navController.context.startActivity(intent)
             }
         ), SupportTab(
-            title = "CHAT WITH SUPPORT" ,
-            imageVector = Icons.Default.Face,
-            onClick = {
-                //TODO chatbot
-            }
-        ), SupportTab(
             title = "EMAIL SUPPORT",
             imageVector = Icons.Default.Email,
             onClick = {
