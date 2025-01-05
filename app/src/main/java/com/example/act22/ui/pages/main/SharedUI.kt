@@ -44,6 +44,7 @@ import coil.compose.AsyncImage
 import com.example.act22.R
 import kotlin.random.Random
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun AssetImage(asset: Asset) {
@@ -214,8 +215,9 @@ fun ErrorMessage(
     ){
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
         )
     }
 }

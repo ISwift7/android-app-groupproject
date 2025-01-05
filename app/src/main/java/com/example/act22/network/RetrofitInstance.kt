@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
     private const val BASE_URL = "https://backend-hh3k.onrender.com/android/"
+    private const val AI_URL = "https://fe11-217-183-59-76.ngrok-free.app/"
 
     private val tradingHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -19,6 +20,13 @@ object RetrofitInstance {
         .connectTimeout(40, TimeUnit.SECONDS)
         .readTimeout(40, TimeUnit.SECONDS)
         .writeTimeout(40, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+
+    private val aiHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 
@@ -38,11 +46,23 @@ object RetrofitInstance {
             .build()
     }
 
+    private val aiRetrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(AI_URL)
+            .client(aiHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
     val tradingApi: TradingApi by lazy {
         tradingRetrofit.create(TradingApi::class.java)
     }
 
     val graphApi: GraphApi by lazy {
         graphRetrofit.create(GraphApi::class.java)
+    }
+
+    val aiApi: AIApi by lazy {
+        aiRetrofit.create(AIApi::class.java)
     }
 } 

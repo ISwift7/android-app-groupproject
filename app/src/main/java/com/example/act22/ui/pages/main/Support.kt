@@ -48,7 +48,6 @@ fun SupportTabs(navController: NavController){
             title = "CALL SUPPORT",
             imageVector = Icons.Default.Phone,
             onClick = {
-                //TODO check of a time
                 val intent = Intent(Intent.ACTION_DIAL).apply {
                     data = Uri.parse("tel:+1234567890")
                 }

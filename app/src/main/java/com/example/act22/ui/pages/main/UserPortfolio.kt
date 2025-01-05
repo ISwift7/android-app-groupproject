@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,7 +59,9 @@ import com.example.act22.ui.components.DrawChart
 import com.example.act22.ui.components.ChartPoint
 import com.example.act22.ui.components.DrawChartWithTimestamps
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.text.style.TextAlign
 import com.example.act22.data.model.Portfolio
+import com.example.act22.viewmodel.AIViewModel
 
 @Composable
 fun UserPortfolio(
@@ -126,7 +129,7 @@ fun PortfolioTabs(
 
             when (selectedTab) {
                 0 -> PortfolioAssets(navController, portfolio)
-                1 -> AITab()
+                1 -> AITab(portfolio)
             }
 
         }
@@ -285,35 +288,35 @@ fun PortfolioAssetCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column{
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                when (chartUiState) {
-                    is AssetPriceViewModel.ChartUiState.Loading -> {
-                        LoadingSpinner()
-                    }
-                    is AssetPriceViewModel.ChartUiState.Error -> {
-                        ErrorMessage("-")
-                    }
-                    is AssetPriceViewModel.ChartUiState.Success -> {
-                        val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
-                        if (points.isEmpty()) {
-                            ErrorMessage("-")
-                        } else {
-                            val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
-                            DrawChart(
-                                points = chartPoints,
-                                lineColor = MaterialTheme.colorScheme.tertiary,
-                                pointColor = MaterialTheme.colorScheme.secondary,
-                                pointRadius = 2f
-                            )
-                        }
-                    }
-                }
-            }
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(100.dp)
+//                    .background(MaterialTheme.colorScheme.surface)
+//            ) {
+//                when (chartUiState) {
+//                    is AssetPriceViewModel.ChartUiState.Loading -> {
+//                        LoadingSpinner()
+//                    }
+//                    is AssetPriceViewModel.ChartUiState.Error -> {
+//                        ErrorMessage("-")
+//                    }
+//                    is AssetPriceViewModel.ChartUiState.Success -> {
+//                        val points = (chartUiState as AssetPriceViewModel.ChartUiState.Success).points
+//                        if (points.isEmpty()) {
+//                            ErrorMessage("-")
+//                        } else {
+//                            val chartPoints = points.map { ChartPoint(it.timestamp, it.price) }
+//                            DrawChart(
+//                                points = chartPoints,
+//                                lineColor = MaterialTheme.colorScheme.tertiary,
+//                                pointColor = MaterialTheme.colorScheme.secondary,
+//                                pointRadius = 2f
+//                            )
+//                        }
+//                    }
+//                }
+//            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -388,7 +391,19 @@ fun PortfolioAssetCard(
 }
 
 @Composable
-fun AITab() {
+fun AITab(
+    portfolio: Portfolio,
+    aiViewModel: AIViewModel = viewModel()
+) {
+    val recommendations by aiViewModel.recommendationState.collectAsState()
+
+    DisposableEffect(portfolio) {
+        aiViewModel.portfolioRecommendations(portfolio)
+        onDispose {
+            aiViewModel.resetRecommendationState()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -398,26 +413,56 @@ fun AITab() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(8.dp),
             elevation = CardDefaults.elevatedCardElevation(2.dp),
             colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            ){
                 Text(
-                    text = "AI Tips and Predictions",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Curve AI Portfolio Recommendations",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Coming soon...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Please wait, it might take some time...",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 10.dp)
                 )
+                when (recommendations) {
+                    is AIViewModel.UiState.Error -> ErrorMessage((recommendations as AIViewModel.UiState.Error).message)
+                    is AIViewModel.UiState.Success -> {
+                        val predictions = (recommendations as AIViewModel.UiState.Success).data
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Curve AI recommends to...",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            predictions.forEach { prediction ->
+                                TypingTextAnimation(
+                                    fullText = prediction
+                                )
+                            }
+
+                        }
+                    }
+                    else -> LoadingSpinner()
+                }
             }
         }
     }

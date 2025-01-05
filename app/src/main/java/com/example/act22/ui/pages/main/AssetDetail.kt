@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -113,7 +114,7 @@ fun AssetDetailsColumn(
                 .verticalScroll(rememberScrollState())
                 .padding(top = 90.dp, bottom = 80.dp)
         ) {
-            AssetChart(chartUiState)
+            //AssetChart(chartUiState)
             AssetDetailsTabs(
                 aiViewModel,
                 asset,
@@ -276,7 +277,7 @@ fun AssetDetailsTabs(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = if (isPremiumUser) {
-        listOf("Details & Analytics", "AI Predictions", "Price alerts")
+        listOf("Details", "AI Predictions", "Price alerts")
     } else {
         listOf("Details", "Price alerts")
     }
@@ -305,47 +306,10 @@ fun AssetDetailsTabs(
 
         when (tabs[selectedTabIndex]) {
             "Details" -> AssetBasicDetails(asset)
-            "Details & Analytics" -> AssetAnalyticsTabs(aiViewModel, asset)
             "AI Predictions" -> AssetPredictions(aiViewModel, asset)
             "Price alerts" -> AssetPriceAlerts(asset = asset, viewModel = viewModel())
         }
     }
-}
-
-@Composable
-fun AssetAnalyticsTabs(
-    aiViewModel: AIViewModel,
-    asset: Asset
-){
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Details", "Analytics")
-
-    TabRow(
-        selectedTabIndex = selectedTabIndex,
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        indicator = { tabPositions ->
-            TabRowDefaults.Indicator(
-                Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    ) {
-        tabs.forEachIndexed { index, title ->
-            Tab(
-                modifier = Modifier.height(40.dp),
-                selected = selectedTabIndex == index,
-                onClick = { selectedTabIndex = index },
-                text = { Text(title, style = MaterialTheme.typography.bodySmall) }
-            )
-        }
-    }
-
-    when (tabs[selectedTabIndex]) {
-        "Details" -> AssetBasicDetails(asset)
-        "Analytics" -> AssetAnalytics(aiViewModel, asset)
-    }
-
 }
 
 @Composable
@@ -404,60 +368,10 @@ fun AssetBasicDetailsText(
 }
 
 @Composable
-fun AssetAnalytics(
-    aiViewModel: AIViewModel,
-    asset: Asset
-) {
-    val analysisState by aiViewModel.analysisState.collectAsState()
-
-    DisposableEffect(asset.ID) {
-        aiViewModel.fetchAssetAnalysis(asset.ID)
-        onDispose {
-            aiViewModel.resetAnalysisState()
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp),
-        elevation = CardDefaults.elevatedCardElevation(2.dp),
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minWidth = 170.dp)
-                .padding(15.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Curve AI predicts that...",
-                style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            when (analysisState) {
-                is AIViewModel.UiState.Error -> ErrorMessage((analysisState as AIViewModel.UiState.Error).message)
-                is AIViewModel.UiState.Success -> {
-                    val aiAnalysisText = (analysisState as AIViewModel.UiState.Success).data[0]
-                    TypingTextAnimation(
-                        fullText = aiAnalysisText,
-                        modifier = Modifier.padding(top = 10.dp)
-                    )
-                }
-                else -> LoadingSpinner()
-            }
-        }
-    }
-}
-
-
-@Composable
 fun TypingTextAnimation(
     fullText: String,
     style: TextStyle = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.None),
-    color: Color = MaterialTheme.colorScheme.onSurface,
+    color: Color = MaterialTheme.colorScheme.onBackground,
     textAlign: TextAlign = TextAlign.Justify,
     modifier: Modifier = Modifier,
     typingSpeed: Long = 25L,
@@ -499,7 +413,7 @@ fun AssetPredictions(
     val predictionState by aiViewModel.predictionState.collectAsState()
 
     DisposableEffect(asset.ID) {
-        aiViewModel.fetchAssetPricePrediction(asset.ID)
+        aiViewModel.analyzeAsset(asset.ID)
         onDispose {
             aiViewModel.resetPredictionState()
         }
@@ -508,7 +422,7 @@ fun AssetPredictions(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp),
+            .padding(8.dp),
         elevation = CardDefaults.elevatedCardElevation(2.dp),
         colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
     ) {
@@ -516,12 +430,17 @@ fun AssetPredictions(
             modifier = Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minWidth = 170.dp)
-                .padding(15.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Curve AI Price Prediction",
-                style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.None),
+                text = "Curve AI Asset Analysis",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Please wait, it might take some time...",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
@@ -529,15 +448,23 @@ fun AssetPredictions(
                 is AIViewModel.UiState.Error -> ErrorMessage((predictionState as AIViewModel.UiState.Error).message)
                 is AIViewModel.UiState.Success -> {
                     val predictions = (predictionState as AIViewModel.UiState.Success).data
+
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.Start,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        Text(
+                            text = "Curve AI recommend you to: ",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
                         predictions.forEach { prediction ->
                             TypingTextAnimation(
-                                fullText = prediction,
-                                modifier = Modifier.padding(top = 10.dp)
+                                fullText = "* - $prediction"
                             )
                         }
                     }
